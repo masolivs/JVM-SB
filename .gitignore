@@ -1,0 +1,16 @@
+# compilados
+build/
+
+# documentação gerada
+docs/html/
+docs/latex/
+
+# arquivos de objeto
+*.o
+*.exe
+
+# arquivos .class Java (os fontes .java sim, os .class não)
+tests/class/*.class
+
+# MSYS2 / MinGW
+*.dll
