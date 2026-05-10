@@ -8,9 +8,3 @@ docs/latex/
 # arquivos de objeto
 *.o
 *.exe
-
-# arquivos .class Java (os fontes .java sim, os .class não)
-tests/class/*.class
-
-# MSYS2 / MinGW
-*.dll

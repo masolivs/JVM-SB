@@ -1,6 +1,6 @@
-# JVM Simplificada — Software Básico · UnB
+# JVM  — Software Básico, 2026.1
 
-Implementação de uma Java Virtual Machine simplificada em C++11,
+Implementação de uma Java Virtual Machine em C++11,
 desenvolvida para a disciplina de Software Básico.
 
 ## Integrantes
@@ -18,7 +18,7 @@ desenvolvida para a disciplina de Software Básico.
 - g++ 11+
 - make
 - cppcheck
-- doxygen + graphviz
+- doxygen
 
 ## Como compilar
 
