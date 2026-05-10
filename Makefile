@@ -1,24 +1,28 @@
 CXX    = g++
 CFLAGS = -std=c++11 -Wall -Wextra -Wpedantic -g
 IFLAGS = -I include
-SRC    = $(shell find src -name '*.cpp')
-OBJ    = $(patsubst src/%.cpp, build/%.o, $(SRC))
-TARGET = build/jvm
+TARGET = build\jvm.exe
 
-all: $(TARGET)
+SRCS = src\main.cpp
 
-$(TARGET): $(OBJ)
-	@mkdir -p $(dir $@)
+OBJS = $(patsubst src\%.cpp, build\%.o, $(SRCS))
+
+all: build $(TARGET)
+
+# cria a pasta build se não existir
+build:
+	if not exist build mkdir build
+
+$(TARGET): $(OBJS)
 	$(CXX) $(CFLAGS) $(IFLAGS) $^ -o $@
 
-build/%.o: src/%.cpp
-	@mkdir -p $(dir $@)
+build\%.o: src\%.cpp
 	$(CXX) $(CFLAGS) $(IFLAGS) -c $< -o $@
 
 check:
 	cppcheck --enable=all --language=c++ \
 	  --suppress=missingIncludeSystem \
-	  -I include src/
+	  -I include src\
 
 sanitize: CFLAGS += -fsanitize=address,undefined -fno-omit-frame-pointer
 sanitize: clean all
@@ -27,15 +31,15 @@ docs:
 	doxygen Doxyfile
 
 display: all
-	./$(TARGET) -d $(CLASS)
+	$(TARGET) -d $(CLASS)
 
 run: all
-	./$(TARGET) tests/class/$(CLASS).class
+	$(TARGET) tests\class\$(CLASS).class
 
 clean:
-	rm -rf build/
+	if exist build rmdir /s /q build
 
 clean-docs:
-	rm -rf docs/html/
+	if exist docs\html rmdir /s /q docs\html
 
 clean-all: clean clean-docs
