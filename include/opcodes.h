@@ -1,11 +1,6 @@
 #ifndef OPCODES_H
 #define OPCODES_H
 
-/**
- * @brief Enum com todos os opcodes JVM (Java 8).
- *
- * Valores correspondem diretamente ao byte do bytecode.
- */
 typedef enum {
     OP_NOP             = 0x00,
     OP_ACONST_NULL     = 0x01,
@@ -211,12 +206,6 @@ typedef enum {
     OP_JSR_W           = 0xC9
 } Opcode;
 
-/**
- * @brief Tabela de mnemônicos para todos os 256 opcodes.
- *
- * Opcodes nao implementados ficam como "unknown".
- * Indexado diretamente pelo byte do opcode: mnemonic[0x60] == "iadd".
- */
 extern const char *mnemonic[256];
 
 #endif /* OPCODES_H */

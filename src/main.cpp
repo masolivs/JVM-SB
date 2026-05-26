@@ -3,29 +3,14 @@
 #include <cstdio>
 #include <cstring>
 
-/**
- * @file main.cpp
- * @brief Ponto de entrada do leitor/exibidor de arquivos .class.
- *
- * Uso:
- *   ./build/leitor <arquivo.class>
- *   ./build/leitor -o saida.txt <arquivo.class>
- */
-
-/**
- * @brief Imprime instruções de uso na saída de erro.
- * @param prog Nome do executável (argv[0]).
- */
 static void print_usage(const char *prog) {
     fprintf(stderr, "Uso: %s [-o <saida.txt>] <arquivo.class>\n", prog);
-    fprintf(stderr, "  -o <saida.txt>  Redireciona saida para arquivo em vez de stdout\n");
 }
 
 int main(int argc, char **argv) {
     const char *output_file = NULL;
     const char *class_file  = NULL;
 
-    /* Parseia argumentos */
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 >= argc) {
@@ -44,7 +29,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /* Redireciona stdout se -o foi especificado */
     if (output_file) {
         if (!freopen(output_file, "w", stdout)) {
             fprintf(stderr, "Erro: nao foi possivel abrir '%s' para escrita\n", output_file);

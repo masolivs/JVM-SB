@@ -1,17 +1,3 @@
-/**
- * @file displayer.cpp
- * @brief Exibicao formatada de todas as secoes de um arquivo .class.
- *
- * Estilo de saida inspirado no jclasslib e no javap -verbose.
- * Secoes exibidas:
- *   1. Cabecalho (magic, versoes, SourceFile)
- *   2. Constant Pool (todos os tipos com valores resolvidos)
- *   3. Informacoes da classe (flags, this/super, interfaces)
- *   4. Fields (agrupados: estaticos e de instancia, com ConstantValue)
- *   5. Metodos (flags, Code: max_stack/max_locals, disassembly,
- *               tabela de excecoes, LineNumberTable, clausula throws)
- */
-
 #include "displayer.h"
 #include "opcodes.h"
 #include "constant_pool.h"
@@ -20,17 +6,6 @@
 #include <cstring>
 #include <cstdint>
 
-/* ================================================================== */
-/* HELPERS DE FORMATACAO                                                */
-/* ================================================================== */
-
-/**
- * @brief Converte access_flags de classe em string legivel.
- *
- * @param flags  Valor u2 dos access_flags.
- * @param buf    Buffer de saida.
- * @param bufsz  Tamanho do buffer.
- */
 static void class_flags_to_str(u2 flags, char *buf, int bufsz) {
     buf[0] = '\0';
     if (flags & ACC_PUBLIC)     strncat(buf, "public ",     bufsz - (int)strlen(buf) - 1);
@@ -45,13 +20,6 @@ static void class_flags_to_str(u2 flags, char *buf, int bufsz) {
     if (len > 0 && buf[len - 1] == ' ') buf[len - 1] = '\0';
 }
 
-/**
- * @brief Converte access_flags de metodo/campo em string legivel.
- *
- * @param flags  Valor u2 dos access_flags.
- * @param buf    Buffer de saida.
- * @param bufsz  Tamanho do buffer.
- */
 static void member_flags_to_str(u2 flags, char *buf, int bufsz) {
     buf[0] = '\0';
     if (flags & ACC_PUBLIC)       strncat(buf, "public ",       bufsz - (int)strlen(buf) - 1);
@@ -71,14 +39,6 @@ static void member_flags_to_str(u2 flags, char *buf, int bufsz) {
     if (len > 0 && buf[len - 1] == ' ') buf[len - 1] = '\0';
 }
 
-/**
- * @brief Retorna o nome Java da versao major do classfile.
- *
- * Cobre Java 2 ate Java 21 (versoes 46-65).
- *
- * @param major  Numero major do classfile.
- * @return String estatica com o nome da versao.
- */
 static const char *java_version_name(u2 major) {
     switch (major) {
         case 45: return "Java 1.1";
@@ -106,19 +66,6 @@ static const char *java_version_name(u2 major) {
     }
 }
 
-/* ================================================================== */
-/* EXIBICAO DO CONSTANT POOL                                            */
-/* ================================================================== */
-
-/**
- * @brief Imprime uma entrada do constant pool com indice, tag e valor resolvido.
- *
- * Formato inspirado no javap -verbose:
- *   #1 = Methodref  #6.#17  // java/lang/Object.<init>:()V
- *
- * @param cf     ClassFile carregado.
- * @param index  Indice 1-based da entrada a exibir.
- */
 static void display_cp_entry(const ClassFile *cf, u2 index) {
     const cp_info &e = cf->constant_pool[index];
     printf("  #%-4u = ", index);
@@ -129,14 +76,12 @@ static void display_cp_entry(const ClassFile *cf, u2 index) {
                    reinterpret_cast<const char *>(e.data.utf8.bytes));
             break;
         case CP_INTEGER: {
-            int32_t v;
-            memcpy(&v, &e.data.integer_val.bytes, 4);
+            int32_t v; memcpy(&v, &e.data.integer_val.bytes, 4);
             printf("Integer            %d\n", v);
             break;
         }
         case CP_FLOAT: {
-            float v;
-            memcpy(&v, &e.data.float_val.bytes, 4);
+            float v; memcpy(&v, &e.data.float_val.bytes, 4);
             printf("Float              %f\n", v);
             break;
         }
@@ -149,79 +94,50 @@ static void display_cp_entry(const ClassFile *cf, u2 index) {
         case CP_DOUBLE: {
             uint64_t bits = ((uint64_t)e.data.double_val.high_bytes << 32) |
                              e.data.double_val.low_bytes;
-            double v;
-            memcpy(&v, &bits, 8);
+            double v; memcpy(&v, &bits, 8);
             printf("Double             %f\n", v);
             break;
         }
-        case CP_CLASS: {
-            std::string name = resolve_class_name(cf, index);
+        case CP_CLASS:
             printf("Class              #%u\t// %s\n",
-                   e.data.class_info.name_index, name.c_str());
+                   e.data.class_info.name_index,
+                   resolve_class_name(cf, index).c_str());
             break;
-        }
-        case CP_STRING: {
-            std::string s = resolve_string(cf, index);
+        case CP_STRING:
             printf("String             #%u\t// \"%s\"\n",
-                   e.data.string_info.string_index, s.c_str());
+                   e.data.string_info.string_index,
+                   resolve_string(cf, index).c_str());
             break;
-        }
-        case CP_FIELDREF: {
-            std::string resolved = resolve_fieldref(cf, index);
+        case CP_FIELDREF:
             printf("Fieldref           #%u.#%u\t// %s\n",
-                   e.data.ref.class_index,
-                   e.data.ref.name_and_type_index,
-                   resolved.c_str());
+                   e.data.ref.class_index, e.data.ref.name_and_type_index,
+                   resolve_fieldref(cf, index).c_str());
             break;
-        }
-        case CP_METHODREF: {
-            std::string resolved = resolve_methodref(cf, index);
+        case CP_METHODREF:
             printf("Methodref          #%u.#%u\t// %s\n",
-                   e.data.ref.class_index,
-                   e.data.ref.name_and_type_index,
-                   resolved.c_str());
+                   e.data.ref.class_index, e.data.ref.name_and_type_index,
+                   resolve_methodref(cf, index).c_str());
             break;
-        }
-        case CP_INTERFACE_METHODREF: {
-            std::string resolved = resolve_methodref(cf, index);
+        case CP_INTERFACE_METHODREF:
             printf("InterfaceMethodref #%u.#%u\t// %s\n",
-                   e.data.ref.class_index,
-                   e.data.ref.name_and_type_index,
-                   resolved.c_str());
+                   e.data.ref.class_index, e.data.ref.name_and_type_index,
+                   resolve_methodref(cf, index).c_str());
             break;
-        }
-        case CP_NAME_AND_TYPE: {
-            std::string nat = resolve_nameandtype(cf, index);
+        case CP_NAME_AND_TYPE:
             printf("NameAndType        #%u.#%u\t// %s\n",
                    e.data.name_and_type.name_index,
                    e.data.name_and_type.descriptor_index,
-                   nat.c_str());
+                   resolve_nameandtype(cf, index).c_str());
             break;
-        }
         default:
             printf("(tag invalido: %u)\n", e.tag);
             break;
     }
 }
 
-/* ================================================================== */
-/* TAMANHO DAS INSTRUCOES                                               */
-/* ================================================================== */
-
-/**
- * @brief Retorna o numero de bytes de uma instrucao (opcode + operandos).
- *
- * tableswitch e lookupswitch tem tamanho variavel calculado com alinhamento.
- * wide altera o tamanho da instrucao seguinte.
- *
- * @param code  Array de bytecodes.
- * @param pc    Offset da instrucao atual dentro do array.
- * @return Numero total de bytes a avancar (>= 1).
- */
 static int opcode_size(const u1 *code, u4 pc) {
     u1 op = code[pc];
     switch (op) {
-        /* sem operandos — 1 byte total */
         case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05:
         case 0x06: case 0x07: case 0x08: case 0x09: case 0x0A: case 0x0B:
         case 0x0C: case 0x0D: case 0x0E: case 0x0F: case 0x1A: case 0x1B:
@@ -249,55 +165,33 @@ static int opcode_size(const u1 *code, u4 pc) {
         case 0xBF: case 0xC2: case 0xC3:
             return 1;
 
-        /* 1 operando de 1 byte — 2 bytes total */
-        case 0x10: /* bipush */
-        case 0x12: /* ldc */
-        case 0x15: case 0x16: case 0x17: case 0x18: case 0x19: /* xload */
-        case 0x36: case 0x37: case 0x38: case 0x39: case 0x3A: /* xstore */
-        case 0xA9: /* ret */
-        case 0xBC: /* newarray */
+        case 0x10: case 0x12:
+        case 0x15: case 0x16: case 0x17: case 0x18: case 0x19:
+        case 0x36: case 0x37: case 0x38: case 0x39: case 0x3A:
+        case 0xA9: case 0xBC:
             return 2;
 
-        /* 1 operando de 2 bytes — 3 bytes total */
-        case 0x11: /* sipush */
-        case 0x13: /* ldc_w */
-        case 0x14: /* ldc2_w */
-        case 0x84: /* iinc: index(1) + const(1) */
+        case 0x11: case 0x13: case 0x14: case 0x84:
         case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9E:
         case 0x9F: case 0xA0: case 0xA1: case 0xA2: case 0xA3: case 0xA4:
-        case 0xA5: case 0xA6:
-        case 0xA7: /* goto */
-        case 0xA8: /* jsr */
-        case 0xB2: case 0xB3: case 0xB4: case 0xB5: /* field ops */
-        case 0xB6: case 0xB7: case 0xB8: /* invoke ops */
-        case 0xBB: case 0xBD: case 0xC0: case 0xC1: /* new/anewarray/cast */
-        case 0xC6: case 0xC7: /* ifnull/ifnonnull */
+        case 0xA5: case 0xA6: case 0xA7: case 0xA8:
+        case 0xB2: case 0xB3: case 0xB4: case 0xB5:
+        case 0xB6: case 0xB7: case 0xB8:
+        case 0xBB: case 0xBD: case 0xC0: case 0xC1:
+        case 0xC6: case 0xC7:
             return 3;
 
-        /* invokeinterface: index(2) + count(1) + 0(1) — 5 bytes */
-        case 0xB9:
+        case 0xB9: case 0xBA: case 0xC8: case 0xC9:
             return 5;
 
-        /* invokedynamic: index(2) + 0(1) + 0(1) — 5 bytes */
-        case 0xBA:
-            return 5;
-
-        /* goto_w / jsr_w: offset de 4 bytes — 5 bytes total */
-        case 0xC8: case 0xC9:
-            return 5;
-
-        /* multianewarray: index(2) + dim(1) — 4 bytes */
         case 0xC5:
             return 4;
 
-        /* wide: depende do opcode seguinte */
         case 0xC4: {
             u1 next = code[pc + 1];
-            if (next == 0x84) return 6; /* wide iinc: index(2)+const(2)+wide(1)+op(1) */
-            return 4;                   /* wide xload/xstore: index(2)+wide(1)+op(1) */
+            return (next == 0x84) ? 6 : 4;
         }
 
-        /* tableswitch: alinhamento variavel — calcula tamanho real */
         case 0xAA: {
             u4 aligned = (pc + 4) & ~3u;
             u4 off = aligned - pc;
@@ -307,7 +201,6 @@ static int opcode_size(const u1 *code, u4 pc) {
             return (int)(off + 12 + (high - low + 1) * 4);
         }
 
-        /* lookupswitch: alinhamento variavel */
         case 0xAB: {
             u4 aligned = (pc + 4) & ~3u;
             u4 off = aligned - pc;
@@ -321,23 +214,6 @@ static int opcode_size(const u1 *code, u4 pc) {
     }
 }
 
-/* ================================================================== */
-/* DISASSEMBLY DE BYTECODES                                             */
-/* ================================================================== */
-
-/**
- * @brief Exibe o disassembly de um bloco de bytecodes com operandos resolvidos.
- *
- * Para cada instrucao imprime:
- *   <offset>: <mnemônico>  [operandos]  [// comentario CP]
- *
- * Instrucoes de branch mostram offset relativo E absoluto: "N (-> M)".
- * ldc/ldc_w/ldc2_w mostram o valor resolvido do CP.
- * tableswitch e lookupswitch mostram todos os cases com targets absolutos.
- *
- * @param cf    ClassFile carregado (necessario para resolver CP).
- * @param code  Code_attribute do metodo.
- */
 void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
     if (!code) return;
 
@@ -347,95 +223,71 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
         printf("    %4u: %-16s", pc, mnemonic[op]);
 
         switch (op) {
-
-            /* ---- carregamento de constantes ---- */
-            case 0x10: /* bipush */
+            case 0x10:
                 printf(" %d", (int8_t)code->code[pc + 1]);
                 break;
-            case 0x11: /* sipush */
+            case 0x11:
                 printf(" %d", (int16_t)((code->code[pc + 1] << 8) | code->code[pc + 2]));
                 break;
-
-            case 0x12: { /* ldc — CP_STRING, CP_INTEGER, CP_FLOAT, CP_CLASS */
+            case 0x12: {
                 u1 idx = code->code[pc + 1];
                 printf(" #%u\t// %s", idx, resolve_cp_value(cf, idx).c_str());
                 break;
             }
-            case 0x13: { /* ldc_w — mesmos tipos que ldc, indice de 2 bytes */
+            case 0x13: case 0x14: {
                 u2 idx = (u2)((code->code[pc + 1] << 8) | code->code[pc + 2]);
                 printf(" #%u\t// %s", idx, resolve_cp_value(cf, idx).c_str());
                 break;
             }
-            case 0x14: { /* ldc2_w — CP_LONG ou CP_DOUBLE */
-                u2 idx = (u2)((code->code[pc + 1] << 8) | code->code[pc + 2]);
-                printf(" #%u\t// %s", idx, resolve_cp_value(cf, idx).c_str());
-                break;
-            }
-
-            /* ---- variaveis locais ---- */
-            case 0x15: case 0x16: case 0x17: case 0x18: case 0x19: /* xload */
-            case 0x36: case 0x37: case 0x38: case 0x39: case 0x3A: /* xstore */
-            case 0xA9: /* ret */
-            case 0xBC: /* newarray */
+            case 0x15: case 0x16: case 0x17: case 0x18: case 0x19:
+            case 0x36: case 0x37: case 0x38: case 0x39: case 0x3A:
+            case 0xA9: case 0xBC:
                 printf(" %u", code->code[pc + 1]);
                 break;
-            case 0x84: /* iinc */
+            case 0x84:
                 printf(" %u, %d", code->code[pc + 1], (int8_t)code->code[pc + 2]);
                 break;
-
-            /* ---- acesso a campos ---- */
             case 0xB2: case 0xB3: case 0xB4: case 0xB5: {
                 u2 idx = (u2)((code->code[pc + 1] << 8) | code->code[pc + 2]);
                 printf(" #%u\t// %s", idx, resolve_fieldref(cf, idx).c_str());
                 break;
             }
-
-            /* ---- invocacoes ---- */
             case 0xB6: case 0xB7: case 0xB8: {
                 u2 idx = (u2)((code->code[pc + 1] << 8) | code->code[pc + 2]);
                 printf(" #%u\t// %s", idx, resolve_methodref(cf, idx).c_str());
                 break;
             }
-            case 0xB9: { /* invokeinterface */
+            case 0xB9: {
                 u2 idx   = (u2)((code->code[pc + 1] << 8) | code->code[pc + 2]);
                 u1 count = code->code[pc + 3];
                 printf(" #%u, %u\t// %s", idx, count, resolve_methodref(cf, idx).c_str());
                 break;
             }
-            case 0xBA: { /* invokedynamic */
+            case 0xBA: {
                 u2 idx = (u2)((code->code[pc + 1] << 8) | code->code[pc + 2]);
                 printf(" #%u", idx);
                 break;
             }
-
-            /* ---- criacao de objetos/arrays ---- */
             case 0xBB: case 0xBD: case 0xC0: case 0xC1: {
                 u2 idx = (u2)((code->code[pc + 1] << 8) | code->code[pc + 2]);
                 printf(" #%u\t// %s", idx, resolve_class_name(cf, idx).c_str());
                 break;
             }
-            case 0xC5: { /* multianewarray */
+            case 0xC5: {
                 u2 idx = (u2)((code->code[pc + 1] << 8) | code->code[pc + 2]);
                 u1 dim = code->code[pc + 3];
                 printf(" #%u, %u\t// %s", idx, dim, resolve_class_name(cf, idx).c_str());
                 break;
             }
-
-            /* ---- branches curtos (offset 2 bytes com sinal) ---- */
             case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9E:
             case 0x9F: case 0xA0: case 0xA1: case 0xA2: case 0xA3: case 0xA4:
-            case 0xA5: case 0xA6:
-            case 0xA7: /* goto */
-            case 0xA8: /* jsr */
-            case 0xC6: case 0xC7: { /* ifnull / ifnonnull */
+            case 0xA5: case 0xA6: case 0xA7: case 0xA8: case 0xC6: case 0xC7: {
                 int16_t offset = (int16_t)((code->code[pc + 1] << 8) | code->code[pc + 2]);
                 u4 target = (u4)((int32_t)pc + offset);
                 printf(" %d\t(-> %u)", offset, target);
                 break;
             }
-
-            /* ---- branches largos (offset 4 bytes com sinal) ---- */
-            case 0xC8: case 0xC9: { /* goto_w / jsr_w */
+            case 0xC8: case 0xC9: {
                 int32_t offset = (int32_t)(((u4)code->code[pc + 1] << 24) |
                                            ((u4)code->code[pc + 2] << 16) |
                                            ((u4)code->code[pc + 3] <<  8) |
@@ -444,8 +296,6 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
                 printf(" %d\t(-> %u)", offset, target);
                 break;
             }
-
-            /* ---- tableswitch ---- */
             case 0xAA: {
                 u4 aligned = (pc + 4) & ~3u;
                 u4 off = aligned - pc;
@@ -462,8 +312,6 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
                 printf("                 default: %d\n              }", (int32_t)pc + def);
                 break;
             }
-
-            /* ---- lookupswitch ---- */
             case 0xAB: {
                 u4 aligned = (pc + 4) & ~3u;
                 u4 off = aligned - pc;
@@ -480,7 +328,6 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
                 printf("                 default: %d\n              }", (int32_t)pc + def);
                 break;
             }
-
             default:
                 break;
         }
@@ -489,16 +336,6 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
     }
 }
 
-/* ================================================================== */
-/* EXIBICAO PRINCIPAL                                                   */
-/* ================================================================== */
-
-/**
- * @brief Exibe o valor de uma entrada do CP referenciada por ConstantValue.
- *
- * @param cf   ClassFile carregado.
- * @param idx  Indice da entrada no CP (CP_INTEGER/FLOAT/LONG/DOUBLE/STRING).
- */
 static void display_constant_value(const ClassFile *cf, u2 idx) {
     const cp_info &e = cf->constant_pool[idx];
     switch (e.tag) {
@@ -533,25 +370,17 @@ static void display_constant_value(const ClassFile *cf, u2 idx) {
     }
 }
 
-/**
- * @brief Imprime um campo (field) com flags, nome, descriptor e ConstantValue.
- *
- * @param cf  ClassFile carregado.
- * @param fi  Campo a exibir.
- */
 static void display_field(const ClassFile *cf, const field_info &fi) {
     char buf[256];
     member_flags_to_str(fi.access_flags, buf, sizeof(buf));
     printf("    [0x%04X] %-20s  %s  %s",
-           fi.access_flags,
-           buf,
+           fi.access_flags, buf,
            resolve_utf8(cf, fi.name_index).c_str(),
            resolve_utf8(cf, fi.descriptor_index).c_str());
 
-    /* Exibe ConstantValue se presente (campos static final) */
     if (fi.attributes_count > 0) {
-        u2 cv_idx = parse_constantvalue_attribute(
-            fi.attributes, fi.attributes_count, cf->constant_pool);
+        u2 cv_idx = parse_constantvalue_attribute(fi.attributes, fi.attributes_count,
+                                                  cf->constant_pool);
         if (cv_idx != 0)
             display_constant_value(cf, cv_idx);
     }
@@ -561,28 +390,19 @@ static void display_field(const ClassFile *cf, const field_info &fi) {
 void display_class_file(const ClassFile *cf) {
     char buf[256];
 
-    /* ---------------------------------------------------------- */
-    /* 1. Cabecalho                                                */
-    /* ---------------------------------------------------------- */
     printf("=== Cabecalho ============================================\n");
     printf("  Magic:          0x%08X\n", cf->magic);
     printf("  Minor version:  %u\n",     cf->minor_version);
-    printf("  Major version:  %u  (%s)\n",
-           cf->major_version, java_version_name(cf->major_version));
-
-    /* SourceFile (atributo opcional mas comum) */
+    printf("  Major version:  %u  (%s)\n", cf->major_version,
+           java_version_name(cf->major_version));
     if (cf->attributes_count > 0) {
-        u2 sf_idx = parse_sourcefile_attribute(
-            cf->attributes, cf->attributes_count, cf->constant_pool);
+        u2 sf_idx = parse_sourcefile_attribute(cf->attributes, cf->attributes_count,
+                                               cf->constant_pool);
         if (sf_idx != 0)
-            printf("  SourceFile:     %s\n",
-                   resolve_utf8(cf, sf_idx).c_str());
+            printf("  SourceFile:     %s\n", resolve_utf8(cf, sf_idx).c_str());
     }
     printf("\n");
 
-    /* ---------------------------------------------------------- */
-    /* 2. Constant Pool                                            */
-    /* ---------------------------------------------------------- */
     printf("=== Constant Pool (%u entradas) ==========================\n",
            cf->constant_pool_count - 1);
     for (u2 i = 1; i < cf->constant_pool_count; i++) {
@@ -594,9 +414,6 @@ void display_class_file(const ClassFile *cf) {
     }
     printf("\n");
 
-    /* ---------------------------------------------------------- */
-    /* 3. Informacoes da classe                                    */
-    /* ---------------------------------------------------------- */
     printf("=== Informacoes da Classe ================================\n");
     class_flags_to_str(cf->access_flags, buf, sizeof(buf));
     printf("  Access flags:  0x%04X  (%s)\n", cf->access_flags, buf);
@@ -607,68 +424,50 @@ void display_class_file(const ClassFile *cf) {
                cf->super_class, resolve_class_name(cf, cf->super_class).c_str());
     else
         printf("  Super class:   #0  // (nenhuma — java/lang/Object)\n");
-
-    /* Interfaces */
     printf("  Interfaces (%u):\n", cf->interfaces_count);
     for (u2 i = 0; i < cf->interfaces_count; i++)
         printf("    #%u  // %s\n",
-               cf->interfaces[i],
-               resolve_class_name(cf, cf->interfaces[i]).c_str());
+               cf->interfaces[i], resolve_class_name(cf, cf->interfaces[i]).c_str());
     printf("\n");
 
-    /* ---------------------------------------------------------- */
-    /* 4. Fields — separados em estaticos e de instancia           */
-    /* ---------------------------------------------------------- */
     printf("=== Fields (%u) ==========================================\n",
            cf->fields_count);
-
-    /* Conta estaticos */
     u2 n_static = 0;
     for (u2 i = 0; i < cf->fields_count; i++)
         if (cf->fields[i].access_flags & ACC_STATIC) n_static++;
     u2 n_instance = cf->fields_count - n_static;
 
-    /* Static fields */
     if (n_static > 0) {
         printf("  --- Fields estaticos (%u) ---\n", n_static);
         for (u2 i = 0; i < cf->fields_count; i++)
             if (cf->fields[i].access_flags & ACC_STATIC)
                 display_field(cf, cf->fields[i]);
     }
-
-    /* Instance fields */
     if (n_instance > 0) {
         printf("  --- Fields de instancia (%u) ---\n", n_instance);
         for (u2 i = 0; i < cf->fields_count; i++)
             if (!(cf->fields[i].access_flags & ACC_STATIC))
                 display_field(cf, cf->fields[i]);
     }
-
     if (cf->fields_count == 0)
         printf("  (nenhum campo)\n");
     printf("\n");
 
-    /* ---------------------------------------------------------- */
-    /* 5. Methods                                                  */
-    /* ---------------------------------------------------------- */
     printf("=== Methods (%u) =========================================\n",
            cf->methods_count);
-
     for (u2 i = 0; i < cf->methods_count; i++) {
         const method_info &mi = cf->methods[i];
         member_flags_to_str(mi.access_flags, buf, sizeof(buf));
 
-        printf("  Method #%u: %s  %s\n",
-               i,
+        printf("  Method #%u: %s  %s\n", i,
                resolve_utf8(cf, mi.name_index).c_str(),
                resolve_utf8(cf, mi.descriptor_index).c_str());
         printf("    Access flags: 0x%04X  (%s)\n", mi.access_flags, buf);
 
-        /* Clausula throws (atributo Exceptions) */
         if (mi.attributes_count > 0) {
             u2 ex_count = 0;
-            u2 *ex_indices = parse_exceptions_attribute(
-                mi.attributes, mi.attributes_count, cf->constant_pool, &ex_count);
+            u2 *ex_indices = parse_exceptions_attribute(mi.attributes, mi.attributes_count,
+                                                        cf->constant_pool, &ex_count);
             if (ex_indices && ex_count > 0) {
                 printf("    throws:");
                 for (u2 j = 0; j < ex_count; j++)
@@ -678,41 +477,34 @@ void display_class_file(const ClassFile *cf) {
             }
         }
 
-        /* Code */
         if (mi.code_attr) {
             const Code_attribute *ca = mi.code_attr;
             printf("    Code:\n");
             printf("      max_stack=%u  max_locals=%u  code_length=%u\n",
                    ca->max_stack, ca->max_locals, ca->code_length);
-
-            /* Disassembly */
             display_bytecodes(cf, ca);
 
-            /* Tabela de excecoes */
             if (ca->exception_table_length > 0) {
                 printf("    Exception table:\n");
                 printf("      %6s  %5s  %9s  type\n", "start", "end", "handler");
                 for (u2 j = 0; j < ca->exception_table_length; j++) {
-                    const exception_entry &e = ca->exception_table[j];
-                    printf("      %-6u %-5u %-9u  ", e.start_pc, e.end_pc, e.handler_pc);
-                    if (e.catch_type == 0)
+                    const exception_entry &ex = ca->exception_table[j];
+                    printf("      %-6u %-5u %-9u  ", ex.start_pc, ex.end_pc, ex.handler_pc);
+                    if (ex.catch_type == 0)
                         printf("any (finally)\n");
                     else
-                        printf("%s\n", resolve_class_name(cf, e.catch_type).c_str());
+                        printf("%s\n", resolve_class_name(cf, ex.catch_type).c_str());
                 }
             }
 
-            /* LineNumberTable (sub-atributo do Code) */
             if (ca->sub_attributes && ca->attributes_count > 0) {
                 u2 lnt_count = 0;
-                u2 *lnt = parse_linenumber_table(
-                    ca->sub_attributes, ca->attributes_count,
-                    cf->constant_pool, &lnt_count);
+                u2 *lnt = parse_linenumber_table(ca->sub_attributes, ca->attributes_count,
+                                                 cf->constant_pool, &lnt_count);
                 if (lnt && lnt_count > 0) {
                     printf("    LineNumberTable:\n");
                     for (u2 j = 0; j < lnt_count; j++)
-                        printf("      line %u: %u\n",
-                               lnt[j * 2 + 1], lnt[j * 2]);
+                        printf("      line %u: %u\n", lnt[j * 2 + 1], lnt[j * 2]);
                     delete[] lnt;
                 }
             }
