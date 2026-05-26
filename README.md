@@ -309,9 +309,9 @@ JVM-SB/
 
 | # | Nome | Matrícula | Contribuição principal |
 |---|------|-----------|----------------------|
-| 1 | Leticia Gonçalves Bomfim | 241002411 | Parser binário BIG-ENDIAN, cabeçalho, flags, interfaces, fields, atributos |
-| 2 | Julia Paulo Amorim | 241039270 | Exibição do Constant Pool com resolução recursiva |
-| 3 | Gustavo Vieira de Araújo | 211068440 | Tabela `mnemonic[256]` — mapeamento de todos os opcodes |
-| 4 | Breno Back dos Santos Miranda da Silva | 190063980 | Resolução de operandos do CP no disassembly, tableswitch/lookupswitch |
-| 5 | Mariana Soares Oliveira | 231013663 | QA — testes nos 21 exemplos, validação de saída, instruções de compilação |
-| 6 | Danilo Silveira da Silva | 222014142 | Slides, roteiro do vídeo e edição final |
+| 1 | Leticia Gonçalves Bomfim | 241002411 | Structs do formato `.class` — `class_file.h` (cp_info, attribute_info, ClassFile…) |
+| 2 | Julia Paulo Amorim | 241039270 | Parser binário BIG-ENDIAN — `class_reader.cpp`, validação do magic number |
+| 3 | Danilo Silveira da Silva | 222014142 | Displayer completo, `main.cpp`, Makefile e exemplos de teste |
+| 4 | Mariana Soares Oliveira | 231013663 | Estrutura inicial, tabela `mnemonic[256]`, parsers de atributos, resolução do `ldc`, unificação do build |
+| 5 | Breno Back dos Santos Miranda da Silva | 190063980 | Parsing do `Code_attribute`, exception table e sub-atributos |
+| 6 | Gustavo Vieira de Araújo | 211068440 | Resolução recursiva do Constant Pool, limpeza de código, compatibilidade Windows/Linux |
