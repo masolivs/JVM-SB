@@ -9,18 +9,39 @@ Desenvolvido como trabalho prático de **Software Básico (CIC0104)** — Univer
 ## Requisitos
 
 - `g++` com suporte a C++11 (GCC ≥ 4.8)
-- `make`
-- Linux (o projeto foi desenvolvido e testado exclusivamente no Linux)
+- `make` (Linux) ou `mingw32-make` (Windows, via [MinGW-w64](https://www.mingw-w64.org/))
+
+O código-fonte usa apenas bibliotecas padrão C++11 e é portável entre Linux e Windows.
 
 ---
 
 ## Como compilar
 
+### Linux
+
 ```bash
 make
 ```
 
-O executável é gerado em `build/leitor`. As flags de compilação utilizadas são:
+O executável é gerado em `build/leitor`.
+
+### Windows (MinGW-w64)
+
+Instale o [MinGW-w64](https://www.mingw-w64.org/) e certifique-se de que `mingw32-make` e `g++` estão no `PATH`. Então:
+
+```bat
+make.bat
+```
+
+Ou diretamente:
+
+```bat
+mingw32-make -f Makefile.win
+```
+
+O executável é gerado em `build\leitor.exe`.
+
+As flags de compilação utilizadas são:
 
 ```
 g++ -std=c++11 -Wall -Wextra -Wpedantic -g
@@ -30,12 +51,21 @@ g++ -std=c++11 -Wall -Wextra -Wpedantic -g
 
 ## Como executar
 
+### Linux
+
 ```bash
 ./build/leitor <arquivo.class>
-./build/leitor -o saida.txt <arquivo.class>    # salva saída em arquivo
+./build/leitor -o saida.txt <arquivo.class>
 ```
 
-**Exemplos práticos:**
+### Windows
+
+```bat
+build\leitor.exe <arquivo.class>
+build\leitor.exe -o saida.txt <arquivo.class>
+```
+
+**Exemplos práticos (Linux):**
 
 ```bash
 ./build/leitor exemplos/HelloWorld.class
@@ -47,13 +77,15 @@ g++ -std=c++11 -Wall -Wextra -Wpedantic -g
 **Gerar `.txt` para todos os exemplos de uma vez:**
 
 ```bash
-make txt-all    # saída em output/<nome>.txt
+make txt-all           # Linux  — saída em output/<nome>.txt
+mingw32-make -f Makefile.win txt-all   # Windows
 ```
 
 **Rodar todos os testes:**
 
 ```bash
-make test
+make test              # Linux
+mingw32-make -f Makefile.win test      # Windows
 ```
 
 ---
@@ -248,7 +280,9 @@ Erro ao ler 'exemplos/cafebabe.class': codigo 1
 
 ```
 JVM-SB/
-├── Makefile
+├── Makefile               ← build Linux (make)
+├── Makefile.win           ← build Windows (mingw32-make -f Makefile.win)
+├── make.bat               ← atalho Windows (chama mingw32-make -f Makefile.win)
 ├── README.md
 ├── exemplos/              ← 21 arquivos .class do professor
 ├── include/

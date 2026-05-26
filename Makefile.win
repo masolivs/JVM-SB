@@ -1,0 +1,40 @@
+CXX    = g++
+CFLAGS = -std=c++11 -Wall -Wextra -Wpedantic -g
+IFLAGS = -I include
+TARGET = build\leitor.exe
+OUTDIR = output
+
+SRCS = src\main.cpp \
+       src\class_reader.cpp \
+       src\constant_pool.cpp \
+       src\attributes.cpp \
+       src\displayer.cpp \
+       src\opcodes.cpp
+
+all: dirs $(TARGET)
+
+dirs:
+	if not exist build mkdir build
+
+$(TARGET): $(SRCS)
+	$(CXX) $(CFLAGS) $(IFLAGS) $(SRCS) -o $(TARGET)
+
+test: all
+	@for %%f in (exemplos\*.class) do ( \
+		$(TARGET) %%f > NUL 2>&1 \
+		&& echo PASS %%f \
+		|| echo FAIL %%f )
+
+txt-all: all
+	if not exist $(OUTDIR) mkdir $(OUTDIR)
+	@for %%f in (exemplos\*.class) do ( \
+		$(TARGET) %%f > $(OUTDIR)\%%~nf.txt \
+		&& echo Gerado: $(OUTDIR)\%%~nf.txt )
+
+clean:
+	if exist build rmdir /s /q build
+
+clean-output:
+	if exist $(OUTDIR) rmdir /s /q $(OUTDIR)
+
+.PHONY: all dirs test txt-all clean clean-output
