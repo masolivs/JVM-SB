@@ -2,6 +2,7 @@ CXX    = g++
 CFLAGS = -std=c++11 -Wall -Wextra -Wpedantic -g
 IFLAGS = -I include
 TARGET = build\jvm.exe
+OUTDIR = output
 
 SRCS = src\main.cpp \
        src\opcodes.cpp \
@@ -38,6 +39,18 @@ $(TARGET): $(SRCS)
 display: all
 	$(TARGET) -d $(CLASS)
 
+output: all
+	if not exist $(OUTDIR) mkdir $(OUTDIR)
+	for %%f in (tests\class\*.class) do \
+		$(TARGET) -d -o $(OUTDIR)\%%~nf.txt %%f && echo Gerado: $(OUTDIR)\%%~nf.txt
+
+output-all: all
+	if not exist $(OUTDIR) mkdir $(OUTDIR)
+	for %%f in (tests\class\*.class) do \
+		$(TARGET) -d -o $(OUTDIR)\%%~nf.txt %%f && echo Gerado: $(OUTDIR)\%%~nf.txt
+	type $(OUTDIR)\*.txt > $(OUTDIR)\all.txt
+	@echo Gerado: $(OUTDIR)\all.txt
+
 run: all
 	$(TARGET) tests\class\$(CLASS).class
 
@@ -61,6 +74,9 @@ clean:
 clean-docs:
 	if exist docs\html rmdir /s /q docs\html
 
-clean-all: clean clean-docs
+clean-output:
+	if exist output rmdir /s /q output
 
-.PHONY: all dirs display run test check sanitize docs clean clean-docs clean-all
+clean-all: clean clean-docs clean-output
+
+.PHONY: all dirs display output output-all run test check sanitize docs clean clean-docs clean-output clean-all

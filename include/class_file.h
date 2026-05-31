@@ -118,7 +118,9 @@ typedef struct {
     u4              code_length;
     u1             *code;             /**< array de bytecodes */
     u2              exception_table_length;
-    exception_entry *exception_table; /**< NULL se vazia */
+    exception_entry *exception_table;
+    u2              attributes_count;      // ADD
+    attribute_info *sub_attributes; /**< NULL se vazia */
 } Code_attribute;
 
 /**

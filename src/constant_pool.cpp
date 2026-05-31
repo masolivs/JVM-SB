@@ -142,14 +142,13 @@ std::string resolve_cp_value(const ClassFile *cf, u2 index) {
         case CP_STRING:
             return "\"" + resolve_string(cf, index) + "\"";
         case CP_INTEGER: {
-            int32_t v;
-            memcpy(&v, &e.data.integer_val.bytes, 4);
+            int32_t v = (int32_t)e.data.integer_val.bytes;
             snprintf(buf, sizeof(buf), "int %d", v);
             return buf;
         }
         case CP_FLOAT: {
-            float v;
-            memcpy(&v, &e.data.float_val.bytes, 4);
+            uint32_t bits = e.data.float_val.bytes;
+            float v; memcpy(&v, &bits, sizeof(v));
             snprintf(buf, sizeof(buf), "float %f", v);
             return buf;
         }

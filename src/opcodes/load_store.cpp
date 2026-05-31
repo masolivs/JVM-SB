@@ -102,11 +102,14 @@ static void ldc_push(JVM *jvm, Frame *frame, u2 idx) {
     const cp_info   &e  = cf->constant_pool[idx];
     switch (e.tag) {
         case CP_INTEGER: {
-            int32_t v; memcpy(&v, &e.data.integer_val.bytes, 4);
+            /* bytes ja esta em host order apos read_u4; cast direto e seguro */
+            int32_t v = (int32_t)e.data.integer_val.bytes;
             frame_push(frame, v); break;
         }
         case CP_FLOAT: {
-            float v; memcpy(&v, &e.data.float_val.bytes, 4);
+            /* type-punning via memcpy e o unico jeito portavel (evita UB de aliasing) */
+            uint32_t bits = e.data.float_val.bytes;
+            float v; memcpy(&v, &bits, sizeof(v));
             frame_push_float(frame, v); break;
         }
         case CP_STRING: {

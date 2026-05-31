@@ -43,6 +43,22 @@ build/%.o: src/%.cpp
 display: all
 	$(TARGET) -d $(CLASS)
 
+# Gera um .txt por arquivo .class em output/
+output: all
+	@mkdir -p $(OUTDIR)
+	@for f in tests/class/*.class; do \
+		name=$$(basename $$f .class); \
+		$(TARGET) -d -o $(OUTDIR)/$$name.txt $$f \
+		&& echo "Gerado: $(OUTDIR)/$$name.txt" \
+		|| echo "ERRO: $$f"; \
+	done
+
+# Gera output/<nome>.txt para cada .class E concatena tudo em output/all.txt
+output-all: output
+	@rm -f $(OUTDIR)/all.txt
+	@cat $(OUTDIR)/*.txt > $(OUTDIR)/all.txt
+	@echo "Gerado: $(OUTDIR)/all.txt"
+
 run: all
 	$(TARGET) tests/class/$(CLASS).class
 
@@ -72,4 +88,4 @@ clean-docs:
 
 clean-all: clean clean-docs
 
-.PHONY: all dirs display run test check sanitize docs clean clean-docs clean-all
+.PHONY: all dirs display output output-all run test check sanitize docs clean clean-docs clean-all

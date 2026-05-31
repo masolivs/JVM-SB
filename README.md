@@ -43,8 +43,22 @@ build\jvm.exe tests\class\HelloWorld.class     # Windows
 ### Modo exibidor — lê e exibe a estrutura do `.class`
 
 ```bash
-./build/jvm -d tests/class/HelloWorld.class    # Linux
-build\jvm.exe -d tests\class\HelloWorld.class  # Windows
+./build/jvm -d tests/class/HelloWorld.class              # Linux
+build\jvm.exe -d tests\class\HelloWorld.class            # Windows
+```
+
+Para salvar a saída em arquivo, use `-o`:
+
+```bash
+./build/jvm -d -o output/HelloWorld.txt tests/class/HelloWorld.class    # Linux
+build\jvm.exe -d -o output\HelloWorld.txt tests\class\HelloWorld.class  # Windows
+```
+
+Para gerar um `.txt` por classe e um `output/all.txt` com tudo concatenado:
+
+```bash
+make -f Makefile.linux output-all   # Linux
+txt-all.bat                         # Windows
 ```
 
 ### Rodar todos os testes
@@ -56,7 +70,7 @@ test.bat                       # Windows
 
 ---
 
-## O que é implementado
+## O que foi implementado
 
 ### Leitor/Exibidor (modo `-d`)
 
@@ -81,7 +95,7 @@ Opcodes implementados por categoria em `src/opcodes/`:
 
 ---
 
-## O que não é implementado
+## O que não foi implementado
 
 - Garbage Collector — objetos vivem até o fim da execução
 - Biblioteca padrão Java (JRE) — sem `java.lang`, `java.util`, `java.io` reais
@@ -151,11 +165,11 @@ Interpretador/
 
 ## Integrantes
 
-| # | Nome | Matrícula | Contribuição principal |
-|---|------|-----------|----------------------|
-| 1 | Leticia Gonçalves Bomfim | 241002411 | Structs do formato `.class` — `class_file.h` |
-| 2 | Julia Paulo Amorim | 241039270 | Parser BIG-ENDIAN — `class_reader.cpp`, validação do magic number |
-| 3 | Danilo Silveira da Silva | 222014142 | Displayer completo, `main.cpp`, Makefile e exemplos de teste |
-| 4 | Mariana Soares Oliveira | 231013663 | Estrutura inicial, tabela `mnemonic[256]`, parsers de atributos, resolução do `ldc`, unificação do build |
-| 5 | Breno Back dos Santos Miranda da Silva | 190063980 | Parsing do `Code_attribute`, exception table e sub-atributos |
-| 6 | Gustavo Vieira de Araújo | 211068440 | Resolução recursiva do Constant Pool, interpreter loop, dispatch table, heap, frames, herança, exceções, área de métodos |
+| Nome | Matrícula |
+|------|-----------|
+| Breno Back dos Santos Miranda da Silva | 190063980 |
+| Danilo Silveira da Silva | 222014142 |
+| Gustavo Vieira de Araújo | 211068440 |
+| Julia Paulo Amorim | 241039270 |
+| Leticia Gonçalves Bomfim | 241002411 |
+| Mariana Soares Oliveira | 231013663 |

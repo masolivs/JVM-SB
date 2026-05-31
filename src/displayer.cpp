@@ -10,10 +10,7 @@
 /* ------------------------------------------------------------------ */
 
 static void print_section(const char *title) {
-    printf("\n");
-    printf("╔══════════════════════════════════════════════════════════════╗\n");
-    printf("║  %-60s║\n", title);
-    printf("╚══════════════════════════════════════════════════════════════╝\n");
+    printf("\n--- %s ---\n", title);
 }
 
 static void class_flags_to_str(u2 flags, char *buf, int bufsz) {
@@ -115,12 +112,12 @@ static void display_linenumber_table(const method_info &mi,
             if (cp[sni].tag == CP_UTF8 &&
                 strcmp((const char *)cp[sni].data.utf8.bytes, "LineNumberTable") == 0) {
                 u2 n = buf_u2(buf, pos);
-                printf("    │\n");
-                printf("    └─ LineNumberTable (%u entrada%s):\n", n, n == 1 ? "" : "s");
+                printf("    |\n");
+                printf("    +- LineNumberTable (%u entrada%s):\n", n, n == 1 ? "" : "s");
                 for (u2 k = 0; k < n; k++) {
                     u2 start = buf_u2(buf, pos+2+k*4);
                     u2 line  = buf_u2(buf, pos+4+k*4);
-                    printf("         linha %-4u  →  offset %u\n", line, start);
+                    printf("         linha %-4u  ->  offset %u\n", line, start);
                 }
                 return;
             }
@@ -206,19 +203,19 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
     u4 pc = 0;
     while (pc < code->code_length) {
         u1 op = code->code[pc];
-        printf("    │   %4u: %-16s", pc, mnemonic[op]);
+        printf("    |   %4u: %-16s", pc, mnemonic[op]);
 
         switch (op) {
             case 0x10: printf("  %d", (int8_t)code->code[pc+1]); break;
             case 0x11: printf("  %d", (int16_t)((code->code[pc+1]<<8)|code->code[pc+2])); break;
             case 0x12: {
                 u1 idx = code->code[pc+1];
-                printf("  #%-4u → %s", idx, resolve_cp_value(cf, idx).c_str());
+                printf("  #%-4u -> %s", idx, resolve_cp_value(cf, idx).c_str());
                 break;
             }
             case 0x13: case 0x14: {
                 u2 idx = (u2)((code->code[pc+1]<<8)|code->code[pc+2]);
-                printf("  #%-4u → %s", idx, resolve_cp_value(cf, idx).c_str());
+                printf("  #%-4u -> %s", idx, resolve_cp_value(cf, idx).c_str());
                 break;
             }
             case 0x15: case 0x16: case 0x17: case 0x18: case 0x19:
@@ -231,36 +228,36 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
                 break;
             case 0xB2: case 0xB3: case 0xB4: case 0xB5: {
                 u2 idx = (u2)((code->code[pc+1]<<8)|code->code[pc+2]);
-                printf("  #%-4u → %s", idx, resolve_fieldref(cf, idx).c_str());
+                printf("  #%-4u -> %s", idx, resolve_fieldref(cf, idx).c_str());
                 break;
             }
             case 0xB6: case 0xB7: case 0xB8: {
                 u2 idx = (u2)((code->code[pc+1]<<8)|code->code[pc+2]);
-                printf("  #%-4u → %s", idx, resolve_methodref(cf, idx).c_str());
+                printf("  #%-4u -> %s", idx, resolve_methodref(cf, idx).c_str());
                 break;
             }
             case 0xB9: {
                 u2 idx = (u2)((code->code[pc+1]<<8)|code->code[pc+2]);
                 u1 cnt = code->code[pc+3];
-                printf("  #%-4u  count=%u → %s", idx, cnt, resolve_methodref(cf, idx).c_str());
+                printf("  #%-4u  count=%u -> %s", idx, cnt, resolve_methodref(cf, idx).c_str());
                 break;
             }
             case 0xBB: case 0xBD: case 0xC0: case 0xC1: {
                 u2 idx = (u2)((code->code[pc+1]<<8)|code->code[pc+2]);
-                printf("  #%-4u → %s", idx, resolve_class_name(cf, idx).c_str());
+                printf("  #%-4u -> %s", idx, resolve_class_name(cf, idx).c_str());
                 break;
             }
             case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9E:
             case 0x9F: case 0xA0: case 0xA1: case 0xA2: case 0xA3: case 0xA4:
             case 0xA5: case 0xA6: case 0xA7: case 0xA8: case 0xC6: case 0xC7: {
                 int16_t off = (int16_t)((code->code[pc+1]<<8)|code->code[pc+2]);
-                printf("  %d  (→ pc %u)", off, (u4)((int32_t)pc+off));
+                printf("  %d  (-> pc %u)", off, (u4)((int32_t)pc+off));
                 break;
             }
             case 0xC8: case 0xC9: {
                 int32_t off = (int32_t)(((u4)code->code[pc+1]<<24)|((u4)code->code[pc+2]<<16)|
                                         ((u4)code->code[pc+3]<<8)|(u4)code->code[pc+4]);
-                printf("  %d  (→ pc %u)", off, (u4)((int32_t)pc+off));
+                printf("  %d  (-> pc %u)", off, (u4)((int32_t)pc+off));
                 break;
             }
             case 0xAA: {
@@ -273,10 +270,10 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
                 for (int32_t k = 0; k <= high-low; k++) {
                     int32_t tgt = (int32_t)(((u4)c[pc+off+12+k*4]<<24)|((u4)c[pc+off+13+k*4]<<16)|
                                             ((u4)c[pc+off+14+k*4]<<8)|(u4)c[pc+off+15+k*4]);
-                    printf("    │        case %-6d → pc %d\n", low+k, (int32_t)pc+tgt);
+                    printf("    |        case %-6d -> pc %d\n", low+k, (int32_t)pc+tgt);
                 }
-                printf("    │        default    → pc %d\n", (int32_t)pc+def);
-                printf("    │              }");
+                printf("    |        default    -> pc %d\n", (int32_t)pc+def);
+                printf("    |              }");
                 break;
             }
             case 0xAB: {
@@ -290,10 +287,10 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
                                             ((u4)c[pc+off+10+k*8] <<8)|(u4)c[pc+off+11+k*8]);
                     int32_t tgt = (int32_t)(((u4)c[pc+off+12+k*8]<<24)|((u4)c[pc+off+13+k*8]<<16)|
                                             ((u4)c[pc+off+14+k*8]<<8)|(u4)c[pc+off+15+k*8]);
-                    printf("    │        chave %-6d → pc %d\n", key, (int32_t)pc+tgt);
+                    printf("    |        chave %-6d -> pc %d\n", key, (int32_t)pc+tgt);
                 }
-                printf("    │        default    → pc %d\n", (int32_t)pc+def);
-                printf("    │              }");
+                printf("    |        default    -> pc %d\n", (int32_t)pc+def);
+                printf("    |              }");
                 break;
             }
             default: break;
@@ -310,7 +307,7 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
 void display_class_file(const ClassFile *cf) {
     char buf[256];
 
-    /* ── 1. Informacoes da Classe ──────────────────────────────────── */
+    /* -- 1. Informacoes da Classe ------------------------------------ */
     print_section("INFORMACOES DA CLASSE");
     u2 sf = find_sourcefile(cf);
     class_flags_to_str(cf->access_flags, buf, sizeof(buf));
@@ -340,19 +337,19 @@ void display_class_file(const ClassFile *cf) {
                    resolve_class_name(cf, cf->interfaces[i]).c_str());
     }
 
-    /* ── 2. Constant Pool ─────────────────────────────────────────── */
+    /* -- 2. Constant Pool ------------------------------------------- */
     print_section("CONSTANT POOL");
     printf("  Total de entradas: %u\n", cf->constant_pool_count - 1);
-    printf("  │\n");
-    printf("  │  %-6s  %-3s  %-20s  %s\n",
+    printf("  |\n");
+    printf("  |  %-6s  %-3s  %-20s  %s\n",
            "Indice", "Tag", "Tipo", "Valor / Referencia");
-    printf("  │  %-6s  %-3s  %-20s  %s\n",
+    printf("  |  %-6s  %-3s  %-20s  %s\n",
            "------", "---", "--------------------", "---------------------");
 
     for (u2 i = 1; i < cf->constant_pool_count; i++) {
         const cp_info &e = cf->constant_pool[i];
         if (e.tag == 0) {
-            printf("  │  #%-5u  ---  %-20s\n", i, "(slot duplo: Long/Double)");
+            printf("  |  #%-5u  ---  %-20s\n", i, "(slot duplo: Long/Double)");
             continue;
         }
 
@@ -379,24 +376,24 @@ void display_class_file(const ClassFile *cf) {
                 snprintf(resolved, sizeof(resolved), "%f", v); break;
             }
             case CP_CLASS:
-                snprintf(resolved, sizeof(resolved), "#%-3u → %s",
+                snprintf(resolved, sizeof(resolved), "#%-3u -> %s",
                          e.data.class_info.name_index,
                          resolve_class_name(cf, i).c_str()); break;
             case CP_STRING:
-                snprintf(resolved, sizeof(resolved), "#%-3u → \"%s\"",
+                snprintf(resolved, sizeof(resolved), "#%-3u -> \"%s\"",
                          e.data.string_info.string_index,
                          resolve_string(cf, i).c_str()); break;
             case CP_FIELDREF:
-                snprintf(resolved, sizeof(resolved), "#%u.#%-2u → %s",
+                snprintf(resolved, sizeof(resolved), "#%u.#%-2u -> %s",
                          e.data.ref.class_index, e.data.ref.name_and_type_index,
                          resolve_fieldref(cf, i).c_str()); break;
             case CP_METHODREF:
             case CP_INTERFACE_METHODREF:
-                snprintf(resolved, sizeof(resolved), "#%u.#%-2u → %s",
+                snprintf(resolved, sizeof(resolved), "#%u.#%-2u -> %s",
                          e.data.ref.class_index, e.data.ref.name_and_type_index,
                          resolve_methodref(cf, i).c_str()); break;
             case CP_NAME_AND_TYPE:
-                snprintf(resolved, sizeof(resolved), "#%u.#%-2u → %s",
+                snprintf(resolved, sizeof(resolved), "#%u.#%-2u -> %s",
                          e.data.name_and_type.name_index,
                          e.data.name_and_type.descriptor_index,
                          resolve_nameandtype(cf, i).c_str()); break;
@@ -404,12 +401,12 @@ void display_class_file(const ClassFile *cf) {
                 snprintf(resolved, sizeof(resolved), "(desconhecido)"); break;
         }
 
-        printf("  │  #%-5u  %-3u  %-20s  %s\n",
+        printf("  |  #%-5u  %-3u  %-20s  %s\n",
                i, e.tag, cp_tag_name(e.tag), resolved);
     }
-    printf("  │\n");
+    printf("  |\n");
 
-    /* ── 3. Fields ────────────────────────────────────────────────── */
+    /* -- 3. Fields -------------------------------------------------- */
     print_section("FIELDS");
     printf("  Total de campos: %u\n", cf->fields_count);
 
@@ -419,16 +416,16 @@ void display_class_file(const ClassFile *cf) {
         for (u2 i = 0; i < cf->fields_count; i++) {
             const field_info &fi = cf->fields[i];
             member_flags_to_str(fi.access_flags, buf, sizeof(buf));
-            printf("  │\n");
-            printf("  ├─ Campo #%u\n", i);
-            printf("  │   %-18s  %s\n", "Nome:",       resolve_utf8(cf, fi.name_index).c_str());
-            printf("  │   %-18s  %s\n", "Descriptor:", resolve_utf8(cf, fi.descriptor_index).c_str());
-            printf("  │   %-18s  0x%04X  (%s)\n", "Access Flags:", fi.access_flags, buf);
+            printf("  |\n");
+            printf("  +- Campo #%u\n", i);
+            printf("  |   %-18s  %s\n", "Nome:",       resolve_utf8(cf, fi.name_index).c_str());
+            printf("  |   %-18s  %s\n", "Descriptor:", resolve_utf8(cf, fi.descriptor_index).c_str());
+            printf("  |   %-18s  0x%04X  (%s)\n", "Access Flags:", fi.access_flags, buf);
         }
-        printf("  │\n");
+        printf("  |\n");
     }
 
-    /* ── 4. Methods ───────────────────────────────────────────────── */
+    /* -- 4. Methods ------------------------------------------------- */
     print_section("METHODS");
     printf("  Total de metodos: %u\n", cf->methods_count);
 
@@ -436,42 +433,42 @@ void display_class_file(const ClassFile *cf) {
         const method_info &mi = cf->methods[i];
         member_flags_to_str(mi.access_flags, buf, sizeof(buf));
 
-        printf("  │\n");
-        printf("  ├─ Metodo #%u\n", i);
-        printf("  │   %-18s  %s\n", "Nome:",       resolve_utf8(cf, mi.name_index).c_str());
-        printf("  │   %-18s  %s\n", "Descriptor:", resolve_utf8(cf, mi.descriptor_index).c_str());
-        printf("  │   %-18s  0x%04X  (%s)\n", "Access Flags:", mi.access_flags, buf);
+        printf("  |\n");
+        printf("  +- Metodo #%u\n", i);
+        printf("  |   %-18s  %s\n", "Nome:",       resolve_utf8(cf, mi.name_index).c_str());
+        printf("  |   %-18s  %s\n", "Descriptor:", resolve_utf8(cf, mi.descriptor_index).c_str());
+        printf("  |   %-18s  0x%04X  (%s)\n", "Access Flags:", mi.access_flags, buf);
 
         if (mi.code_attr) {
-            printf("  │\n");
-            printf("  │   %-18s  %u\n", "max_stack:",  mi.code_attr->max_stack);
-            printf("  │   %-18s  %u\n", "max_locals:", mi.code_attr->max_locals);
-            printf("  │   %-18s  %u bytes\n", "Codigo:",  mi.code_attr->code_length);
+            printf("  |\n");
+            printf("  |   %-18s  %u\n", "max_stack:",  mi.code_attr->max_stack);
+            printf("  |   %-18s  %u\n", "max_locals:", mi.code_attr->max_locals);
+            printf("  |   %-18s  %u bytes\n", "Codigo:",  mi.code_attr->code_length);
 
             if (mi.code_attr->exception_table_length > 0) {
-                printf("  │\n");
-                printf("  │   Tabela de Excecoes (%u entrada%s):\n",
+                printf("  |\n");
+                printf("  |   Tabela de Excecoes (%u entrada%s):\n",
                        mi.code_attr->exception_table_length,
                        mi.code_attr->exception_table_length == 1 ? "" : "s");
-                printf("  │   %-8s  %-6s  %-8s  %s\n",
+                printf("  |   %-8s  %-6s  %-8s  %s\n",
                        "start_pc", "end_pc", "handler", "Tipo");
                 for (u2 j = 0; j < mi.code_attr->exception_table_length; j++) {
                     const exception_entry &e = mi.code_attr->exception_table[j];
-                    printf("  │   %-8u  %-6u  %-8u  ", e.start_pc, e.end_pc, e.handler_pc);
+                    printf("  |   %-8u  %-6u  %-8u  ", e.start_pc, e.end_pc, e.handler_pc);
                     if (e.catch_type == 0) printf("any (finally)\n");
                     else printf("%s\n", resolve_class_name(cf, e.catch_type).c_str());
                 }
             }
 
-            printf("  │\n");
-            printf("  │   Bytecodes:\n");
-            printf("  │   %-6s  %-16s  %s\n",
+            printf("  |\n");
+            printf("  |   Bytecodes:\n");
+            printf("  |   %-6s  %-16s  %s\n",
                    "offset", "mnemonico", "operandos / CP resolvido");
-            printf("  │   %-6s  %-16s  %s\n",
+            printf("  |   %-6s  %-16s  %s\n",
                    "------", "----------------", "------------------------");
             display_bytecodes(cf, mi.code_attr);
             display_linenumber_table(mi, mi.code_attr, cf->constant_pool);
         }
     }
-    printf("  │\n\n");
+    printf("  |\n\n");
 }
