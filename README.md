@@ -1,138 +1,161 @@
-# Leitor e Exibidor de Arquivos .class — JVM_SB
+# JVM Interpretador — Software Básico (CIC0104) — UnB 2026/1
 
-Ferramenta em C++ que lê arquivos `.class` no formato binário da JVM e exibe
-suas estruturas internas de forma similar ao [jclasslib](https://github.com/ingokegel/jclasslib)
-e ao `javap -verbose`, sem precisar de JRE instalada.
-
-Desenvolvida como trabalho prático — **Software Básico (CIC0104)**, UnB — 2026/1.
+Implementação de uma Java Virtual Machine em C++11 capaz de **ler, exibir e executar** arquivos `.class` do formato binário da JVM — sem precisar de JRE instalada.
 
 ---
 
 ## Requisitos
 
-- Compilador C++11: `g++` (GCC ≥ 4.8) ou `clang++`
-- `make`
-- `cppcheck` (opcional, para análise estática)
+- `g++` com suporte a C++11 (GCC ≥ 4.8)
+- `make` (Linux) ou `mingw32-make` (Windows, via [MinGW-w64](https://www.mingw-w64.org/))
 
 ---
 
-## Compilar e executar
+## Como compilar
+
+### Linux
 
 ```bash
-make                                  # compila em build/leitor
-./build/leitor exemplos/Fibonacci.class
-./build/leitor -o Fibonacci.txt exemplos/Fibonacci.class   # salva em arquivo
+make -f Makefile.linux
 ```
 
-### Saída em .txt para todos os exemplos de uma vez
+O executável é gerado em `build/jvm`.
 
-```bash
-make txt-all                          # gera exemplos/*.txt
-make txt CLASS=exemplos/Belote.class  # gera somente este
+### Windows (MinGW-w64)
+
+```bat
+make.bat
 ```
 
-### Redirecionamento manual equivalente
+O executável é gerado em `build\jvm.exe`.
+
+---
+
+## Como executar
+
+### Modo interpretador — executa o `main` da classe
 
 ```bash
-./build/leitor exemplos/HelloWorld.class > HelloWorld.txt
+./build/jvm tests/class/HelloWorld.class       # Linux
+build\jvm.exe tests\class\HelloWorld.class     # Windows
+```
+
+### Modo exibidor — lê e exibe a estrutura do `.class`
+
+```bash
+./build/jvm -d tests/class/HelloWorld.class    # Linux
+build\jvm.exe -d tests\class\HelloWorld.class  # Windows
+```
+
+### Rodar todos os testes
+
+```bash
+make -f Makefile.linux test    # Linux
+test.bat                       # Windows
 ```
 
 ---
 
-## Análise de qualidade
+## O que é implementado
 
-### Análise estática (cppcheck)
+### Leitor/Exibidor (modo `-d`)
 
-```bash
-make check
-# Relatório gerado em build/cppcheck.log
-```
+- Parser BIG-ENDIAN completo do formato `.class`
+- Constant Pool com resolução recursiva de todos os 11 tipos
+- Disassembly com mnemônicos, operandos resolvidos, `tableswitch`/`lookupswitch`
 
-### Análise dinâmica (sanitizers)
+### Interpretador (modo padrão)
 
-```bash
-make asan   # AddressSanitizer + UBSan — detecta leaks, UB, out-of-bounds
-make tsan   # ThreadSanitizer
+- **Dispatch table O(1)** — `OpcodeHandler dispatch[256]` indexada pelo byte do opcode
+- **Pilha de frames** — `JvmStack` com `Frame` (operand stack + variáveis locais + PC)
+- **Heap unificado** — `vector<HeapEntry>` para objetos e arrays; referências como `int32_t`
+- **Área de métodos** — `unordered_map<string, ClassEntry*>` com carregamento automático
+- **Objetos** — `JObject` com campos de instância cobrindo toda a hierarquia de herança
+- **Arrays** — `JArray` com campo `arraylength` explícito; bounds check automático
+- **Herança e polimorfismo** — `find_method_ex` retorna a classe declarante do método
+- **Exceções** — `athrow`, `exception_table`, propagação entre frames
 
-# Após make asan, execute normalmente:
-ASAN_OPTIONS=detect_leaks=1 ./build/leitor exemplos/cafebabe.class
-```
+Opcodes implementados por categoria em `src/opcodes/`:
+`arithmetic · load_store · stack_ops · control · invoke`
+`field_ops · object_ops · array_ops · convert · exceptions`
 
 ---
 
-## O que é exibido
+## O que não é implementado
 
-### 1. Cabeçalho
-- Magic number (`0xCAFEBABE`)
-- Versões minor e major com nome Java (Java 5 a Java 21)
-- `SourceFile` — nome do arquivo `.java` original
-
-### 2. Constant Pool
-- Índice `#N`, tag, índices internos e **valor resolvido recursivamente**
-- Todos os 11 tipos: Utf8, Integer, Float, Long, Double, Class, String,
-  Fieldref, Methodref, InterfaceMethodref, NameAndType
-- Slots vazios de Long/Double sinalizados
-
-### 3. Informações da classe
-- Access flags traduzidos (public, final, super, interface, abstract, enum…)
-- `this_class` e `super_class` com índice e nome resolvido
-- Interfaces implementadas
-
-### 4. Fields — separados em estáticos e de instância
-- Access flags traduzidos + descriptor
-- `ConstantValue` exibido inline para campos `static final`
-
-### 5. Métodos
-- Access flags + descriptor
-- Cláusula `throws` (atributo `Exceptions`)
-- Atributo `Code`: `max_stack`, `max_locals`, `code_length`
-- **Disassembly** com offset, mnemônico e operandos resolvidos do CP:
-  - `ldc` / `ldc_w`: resolve `CP_STRING`, `CP_INTEGER`, `CP_FLOAT`, `CP_CLASS`
-  - `ldc2_w`: resolve `CP_LONG` e `CP_DOUBLE`
-  - Branches: offset relativo **e** absoluto `(-> N)`
-  - `tableswitch`: todos os cases + default com targets absolutos
-  - `lookupswitch`: todos os pares key/offset + default
-  - Todos os `invoke*`, `getstatic`/`putfield`, `new`, `checkcast` com CP resolvido
-- Tabela de exceções (`exception_table`) com tipos
-- `LineNumberTable` — linha do `.java` para cada bytecode
+- Garbage Collector — objetos vivem até o fim da execução
+- Biblioteca padrão Java (JRE) — sem `java.lang`, `java.util`, `java.io` reais
+- `invokedynamic` / `BootstrapMethods`
+- Multithreading
+- Reflection
 
 ---
 
 ## Estrutura do projeto
 
 ```
-JVM-SB/
-├── Makefile                  # build, txt, cppcheck, asan, tsan
+Interpretador/
+├── Makefile               ← build Windows (mingw32-make)
+├── Makefile.linux         ← build Linux (make -f Makefile.linux)
+├── make.bat               ← atalho Windows
+├── test.bat               ← testes Windows
+├── txt-all.bat            ← gera .txt de todos os .class (Windows)
+├── Doxyfile               ← config Doxygen
 ├── README.md
-├── Doxyfile                  # config Doxygen
 ├── include/
-│   ├── class_file.h          # structs do formato .class (ClassFile, cp_info…)
-│   ├── class_reader.h        # API do leitor
-│   ├── constant_pool.h       # funções de resolução do CP
-│   ├── attributes.h          # parse de Code, LineNumberTable, Exceptions,
-│   │                         #   SourceFile, ConstantValue
-│   ├── opcodes.h             # tabela mnemonic[256]
-│   ├── displayer.h           # API do exibidor
-│   ├── errors.h              # enum JvmError
-│   └── types.h               # tipos primitivos (u1, u2, u4)
+│   ├── types.h            ← tipos primitivos (u1, u2, u4)
+│   ├── errors.h           ← enum JvmError
+│   ├── class_file.h       ← structs do formato .class
+│   ├── class_reader.h     ← leitura e liberação de ClassFile
+│   ├── constant_pool.h    ← resolução do Constant Pool
+│   ├── attributes.h       ← parse de Code, LineNumberTable, Exceptions…
+│   ├── opcodes.h          ← enum Opcode + tabela mnemonic[256]
+│   ├── displayer.h        ← exibição formatada
+│   ├── frame.h            ← Frame (operand stack + local vars + PC)
+│   ├── jvm_stack.h        ← pilha de frames
+│   ├── object.h           ← JObject (campos de instância)
+│   ├── array.h            ← JArray (arraylength + elements)
+│   ├── method_area.h      ← MethodArea + ClassEntry
+│   └── interpreter.h      ← JVM, dispatch table, heap, interpret loop
 ├── src/
-│   ├── main.cpp              # ponto de entrada (suporta -o)
-│   ├── class_reader.cpp      # leitura BIG-ENDIAN + free_class_file
-│   ├── constant_pool.cpp     # resolução recursiva de entradas do CP
-│   ├── attributes.cpp        # parsing de todos os atributos suportados
-│   ├── opcodes.cpp           # tabela de mnemônicos (0x00–0xCA)
-│   └── displayer.cpp         # exibição formatada de todas as seções
-└── exemplos/                 # arquivos .class para teste
+│   ├── main.cpp           ← ponto de entrada (-d exibidor | padrão interpretador)
+│   ├── class_reader.cpp
+│   ├── constant_pool.cpp
+│   ├── attributes.cpp
+│   ├── opcodes.cpp
+│   ├── displayer.cpp
+│   ├── frame.cpp
+│   ├── jvm_stack.cpp
+│   ├── object.cpp
+│   ├── array.cpp
+│   ├── method_area.cpp
+│   ├── interpreter.cpp
+│   └── opcodes/           ← handlers por categoria de opcode
+│       ├── arithmetic.cpp
+│       ├── load_store.cpp
+│       ├── stack_ops.cpp
+│       ├── control.cpp
+│       ├── invoke.cpp
+│       ├── field_ops.cpp
+│       ├── object_ops.cpp
+│       ├── array_ops.cpp
+│       ├── convert.cpp
+│       └── exceptions.cpp
+├── tests/
+│   ├── class/             ← arquivos .class de teste
+│   └── java/              ← arquivos .java de teste
+└── exemplos/              ← arquivos .class do professor (leitor/exibidor)
 ```
+
 ---
 
 ## Integrantes
 
-| Nome | Matrícula |
-|------|-----------|
-| Breno Back dos Santos Miranda da Silva | 190063980 |
-| Danilo Silveira da Silva | 222014142 |
-| Gustavo Vieira de Araújo | 211068440 |
-| Julia Paulo Amorim | 241039270 |
-| Leticia Gonçalves Bomfim | 241002411 |
-| Mariana Soares Oliveira | 231013663 |
+| # | Nome | Matrícula | Contribuição principal |
+|---|------|-----------|----------------------|
+| 1 | Leticia Gonçalves Bomfim | 241002411 | Structs do formato `.class` — `class_file.h` |
+| 2 | Julia Paulo Amorim | 241039270 | Parser BIG-ENDIAN — `class_reader.cpp`, validação do magic number |
+| 3 | Danilo Silveira da Silva | 222014142 | Displayer completo, `main.cpp`, Makefile e exemplos de teste |
+| 4 | Mariana Soares Oliveira | 231013663 | Estrutura inicial, tabela `mnemonic[256]`, parsers de atributos, resolução do `ldc`, unificação do build |
+| 5 | Breno Back dos Santos Miranda da Silva | 190063980 | Parsing do `Code_attribute`, exception table e sub-atributos |
+| 6 | Gustavo Vieira de Araújo | 211068440 | Resolução recursiva do Constant Pool, interpreter loop, dispatch table, heap, frames, herança, exceções, área de métodos |

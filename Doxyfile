@@ -1,9 +1,9 @@
 #---------------------------------------------------------------------------
 # Projeto
 #---------------------------------------------------------------------------
-PROJECT_NAME           = "JVM-SB"
+PROJECT_NAME           = "JVM-Interpretador"
 PROJECT_NUMBER         = "2026.1"
-PROJECT_BRIEF          = "Implementacao de um leitor/exibidor de JVM em C++11 — Software Basico UnB"
+PROJECT_BRIEF          = "Implementacao de uma Java Virtual Machine em C++11 — Software Basico UnB"
 PROJECT_LOGO           =
 OUTPUT_DIRECTORY       = docs
 

@@ -298,12 +298,6 @@ void free_class_file(ClassFile *cf) {
             if (cf->methods[i].code_attr) {
                 delete[] cf->methods[i].code_attr->code;
                 delete[] cf->methods[i].code_attr->exception_table;
-                /* libera sub-atributos do Code (LineNumberTable etc.) */
-                if (cf->methods[i].code_attr->sub_attributes) {
-                    for (u2 j = 0; j < cf->methods[i].code_attr->attributes_count; j++)
-                        delete[] cf->methods[i].code_attr->sub_attributes[j].info;
-                    delete[] cf->methods[i].code_attr->sub_attributes;
-                }
                 delete cf->methods[i].code_attr;
             }
             if (cf->methods[i].attributes) {
