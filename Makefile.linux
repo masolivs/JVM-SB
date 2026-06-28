@@ -1,7 +1,7 @@
 CXX    = g++
 CFLAGS = -std=c++11 -Wall -Wextra -Wpedantic -g
 IFLAGS = -I include
-TARGET = build/jvm
+TARGET = build/jvm.exe
 OUTDIR = output
 
 SRCS = src/main.cpp \
@@ -41,14 +41,14 @@ build/%.o: src/%.cpp
 	$(CXX) $(CFLAGS) $(IFLAGS) -c $< -o $@
 
 display: all
-	$(TARGET) -d $(CLASS)
+	./$(TARGET) -d $(CLASS)
 
 # Gera um .txt por arquivo .class em output/
 output: all
 	@mkdir -p $(OUTDIR)
 	@for f in tests/class/*.class; do \
 		name=$$(basename $$f .class); \
-		$(TARGET) -d -o $(OUTDIR)/$$name.txt $$f \
+		./$(TARGET) -d -o $(OUTDIR)/$$name.txt $$f \
 		&& echo "Gerado: $(OUTDIR)/$$name.txt" \
 		|| echo "ERRO: $$f"; \
 	done
@@ -60,11 +60,18 @@ output-all: output
 	@echo "Gerado: $(OUTDIR)/all.txt"
 
 run: all
-	$(TARGET) tests/class/$(CLASS).class
+	./$(TARGET) tests/class/$(CLASS).class
+
+run-all: all
+	@for f in tests/class/*.class; do \
+		echo "Executando: $$f"; \
+		./$(TARGET) $$f; \
+		echo ""; \
+	done
 
 test: all
 	@for f in tests/class/*.class; do \
-		$(TARGET) $$f > /dev/null 2>&1 \
+		./$(TARGET) $$f > /dev/null 2>&1 \
 		&& echo "PASS $$f" \
 		|| echo "FAIL $$f"; \
 	done
@@ -86,6 +93,9 @@ clean:
 clean-docs:
 	rm -rf docs/html
 
-clean-all: clean clean-docs
+clean-output:
+	rm -rf output
 
-.PHONY: all dirs display output output-all run test check sanitize docs clean clean-docs clean-all
+clean-all: clean clean-docs clean-output
+
+.PHONY: all dirs display output output-all run run-all test check sanitize docs clean clean-docs clean-output clean-all
