@@ -19,6 +19,16 @@ struct JvmStack {
  * @brief Aloca e inicializa uma JvmStack vazia.
  *
  * @return Ponteiro para a JvmStack criada.
+ *
+ * @see jvm_stack_destroy()
+ *
+ * @code
+ * JvmStack *stack = jvm_stack_create();
+ * jvm_stack_push(stack, frame_create(method, klass));
+ * Frame *top = jvm_stack_current(stack);
+ * jvm_stack_pop(stack);
+ * jvm_stack_destroy(stack);
+ * @endcode
  */
 JvmStack *jvm_stack_create(void);
 
@@ -26,6 +36,8 @@ JvmStack *jvm_stack_create(void);
  * @brief Libera todos os frames e a propria pilha.
  *
  * @param stack  Pilha a destruir; pode ser NULL.
+ *
+ * @see jvm_stack_create()
  */
 void jvm_stack_destroy(JvmStack *stack);
 
@@ -37,6 +49,12 @@ void jvm_stack_destroy(JvmStack *stack);
  *
  * @param stack  Pilha de execucao.
  * @param frame  Frame a empurrar.
+ *
+ * @warning Em overflow esta funcao encerra o processo (nao lanca
+ * StackOverflowError como exececao Java catavel); reflete a limitacao
+ * de nao haver um mecanismo de erro fatal mais granular nesta JVM.
+ *
+ * @see jvm_stack_pop()
  */
 void jvm_stack_push(JvmStack *stack, Frame *frame);
 
@@ -44,6 +62,9 @@ void jvm_stack_push(JvmStack *stack, Frame *frame);
  * @brief Remove e destroi o frame do topo da pilha.
  *
  * @param stack  Pilha de execucao.
+ *
+ * @see jvm_stack_push()
+ * @see jvm_stack_current()
  */
 void jvm_stack_pop(JvmStack *stack);
 
@@ -52,6 +73,8 @@ void jvm_stack_pop(JvmStack *stack);
  *
  * @param stack  Pilha de execucao.
  * @return Frame corrente ou NULL se vazia.
+ *
+ * @see jvm_stack_is_empty()
  */
 Frame *jvm_stack_current(const JvmStack *stack);
 
@@ -60,6 +83,8 @@ Frame *jvm_stack_current(const JvmStack *stack);
  *
  * @param stack  Pilha de execucao.
  * @return true se nao ha frames ativos.
+ *
+ * @see jvm_stack_current()
  */
 bool jvm_stack_is_empty(const JvmStack *stack);
 

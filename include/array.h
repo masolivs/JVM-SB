@@ -41,6 +41,16 @@ struct JArray {
  * @param type    Tipo primitivo ou T_REF.
  * @param length  Numero de elementos.
  * @return Ponteiro para o JArray alocado.
+ *
+ * @see array_free()
+ * @see element_size()
+ *
+ * @code
+ * JArray *arr = array_new(T_INT, 10);   // int[10], zerado
+ * array_set(arr, 0, 42);
+ * int32_t v = array_get(arr, 0);        // 42
+ * array_free(arr);
+ * @endcode
  */
 JArray *array_new(ArrayType type, int32_t length);
 
@@ -48,6 +58,8 @@ JArray *array_new(ArrayType type, int32_t length);
  * @brief Libera um JArray alocado por array_new.
  *
  * @param arr  Array a destruir; pode ser NULL.
+ *
+ * @see array_new()
  */
 void array_free(JArray *arr);
 
@@ -55,20 +67,34 @@ void array_free(JArray *arr);
  * @brief Le um elemento do array como int32_t.
  *
  * Para long/double, usa os dois elementos adjacentes.
- * Verifica bounds e aborta se fora do intervalo.
  *
- * @param arr    Array alvo.
+ * @param arr    Array alvo; nao pode ser NULL.
  * @param index  Indice do elemento.
  * @return Valor do elemento convertido para int32.
+ *
+ * @warning Esta funcao NAO verifica limites (index < 0 ou index >=
+ * arraylength). A verificacao e responsabilidade do chamador e e feita
+ * pelos opcodes xaload em array_ops.cpp via macro CHECK_BOUNDS, que
+ * dispara ArrayIndexOutOfBoundsException antes de invocar array_get().
+ * Chamar diretamente com indice invalido e comportamento indefinido.
+ *
+ * @see array_set()
+ * @see element_size()
  */
 int32_t array_get(const JArray *arr, int32_t index);
 
 /**
  * @brief Escreve um elemento no array como int32_t.
  *
- * @param arr    Array alvo.
+ * @param arr    Array alvo; nao pode ser NULL.
  * @param index  Indice do elemento.
  * @param value  Valor a armazenar.
+ *
+ * @warning Assim como array_get(), esta funcao NAO verifica limites.
+ * A validacao acontece no chamador (array_ops.cpp, macro CHECK_BOUNDS)
+ * antes de array_set() ser invocada.
+ *
+ * @see array_get()
  */
 void array_set(JArray *arr, int32_t index, int32_t value);
 

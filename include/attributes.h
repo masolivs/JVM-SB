@@ -25,6 +25,17 @@
  * @param count  Numero de atributos.
  * @param cp     Constant pool da classe (para resolver o nome "Code").
  * @return Ponteiro para Code_attribute alocado com new, ou NULL se ausente.
+ *
+ * @see parse_linenumber_table() — le um sub-atributo de Code_attribute::sub_attributes.
+ * @see Code_attribute
+ *
+ * @code
+ * Code_attribute *ca = parse_code_attribute(method.attributes,
+ *                                            method.attributes_count, cf->constant_pool);
+ * if (ca) {
+ *     // ca->code, ca->code_length prontos para disassembly/execucao
+ * }
+ * @endcode
  */
 Code_attribute *parse_code_attribute(const attribute_info *attrs,
                                      u2                    count,
@@ -42,6 +53,18 @@ Code_attribute *parse_code_attribute(const attribute_info *attrs,
  * @param out_count  Recebe o numero de entradas na tabela.
  * @return Array plano de pares {start_pc, line_number} (u2), ou NULL.
  *         O chamador e responsavel por liberar com delete[].
+ *
+ * @see parse_code_attribute() — produz o Code_attribute cujo
+ *      sub_attributes/attributes_count sao passados aqui.
+ *
+ * @code
+ * u2 n = 0;
+ * u2 *table = parse_linenumber_table(ca->sub_attributes, ca->attributes_count, cp, &n);
+ * for (u2 i = 0; i < n; i++) {
+ *     u2 start_pc = table[i * 2], line = table[i * 2 + 1];
+ * }
+ * delete[] table;
+ * @endcode
  */
 u2 *parse_linenumber_table(const attribute_info *attrs,
                            u2                    count,
@@ -57,6 +80,9 @@ u2 *parse_linenumber_table(const attribute_info *attrs,
  * @param out_count  Recebe o numero de classes de excecao listadas.
  * @return Array de indices CP_CLASS, ou NULL.
  *         O chamador e responsavel por liberar com delete[].
+ *
+ * @see resolve_class_name() em constant_pool.h — resolve cada indice
+ *      retornado para o nome textual da classe de excecao.
  */
 u2 *parse_exceptions_attribute(const attribute_info *attrs,
                                u2                    count,
@@ -72,6 +98,8 @@ u2 *parse_exceptions_attribute(const attribute_info *attrs,
  * @param count  Numero de atributos.
  * @param cp     Constant pool da classe.
  * @return Indice UTF8 do nome do arquivo fonte, ou 0 se ausente.
+ *
+ * @see parse_constantvalue_attribute() — mesmo padrao de retorno (indice ou 0).
  */
 u2 parse_sourcefile_attribute(const attribute_info *attrs,
                               u2                    count,
@@ -87,6 +115,10 @@ u2 parse_sourcefile_attribute(const attribute_info *attrs,
  * @param count  Numero de atributos.
  * @param cp     Constant pool da classe.
  * @return Indice do CP com o valor, ou 0 se ausente.
+ *
+ * @see resolve_cp_value() em constant_pool.h — formata o valor apontado
+ *      pelo indice retornado.
+ * @see parse_sourcefile_attribute() — mesmo padrao de retorno (indice ou 0).
  */
 u2 parse_constantvalue_attribute(const attribute_info *attrs,
                                  u2                    count,

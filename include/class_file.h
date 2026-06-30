@@ -90,6 +90,10 @@ typedef struct {
  * @brief Atributo generico (nome + bytes brutos).
  *
  * Atributos nao reconhecidos sao armazenados aqui e ignorados.
+ *
+ * @see Code_attribute — versao parseada do atributo "Code".
+ * @see attributes.h — funcoes parse_*_attribute() que interpretam
+ *      o array info[] conforme o nome do atributo.
  */
 typedef struct {
     u2  name_index; /**< indice UTF8 com o nome do atributo */
@@ -99,6 +103,8 @@ typedef struct {
 
 /**
  * @brief Entrada da tabela de excecoes do Code_attribute.
+ *
+ * @see Code_attribute
  */
 typedef struct {
     u2 start_pc;   /**< inicio do bloco try (inclusive) */
@@ -111,6 +117,11 @@ typedef struct {
  * @brief Atributo Code de um metodo.
  *
  * Contem os bytecodes e informacoes de execucao.
+ *
+ * @see exception_entry — entradas da exception_table.
+ * @see parse_code_attribute() em attributes.h — preenche esta struct.
+ * @see parse_linenumber_table() em attributes.h — le sub_attributes
+ *      em busca de LineNumberTable (debug info).
  */
 typedef struct {
     u2              max_stack;
@@ -119,12 +130,17 @@ typedef struct {
     u1             *code;             /**< array de bytecodes */
     u2              exception_table_length;
     exception_entry *exception_table;
-    u2              attributes_count;      // ADD
+    u2              attributes_count;      /**< numero de sub-atributos de Code (ex: LineNumberTable) */
     attribute_info *sub_attributes; /**< NULL se vazia */
 } Code_attribute;
 
 /**
  * @brief Informacoes de um campo (field) da classe.
+ *
+ * @see method_info — estrutura analoga para metodos.
+ * @see ACC_PUBLIC, ACC_PRIVATE, ACC_PROTECTED, ACC_STATIC,
+ *      ACC_FINAL, ACC_VOLATILE, ACC_TRANSIENT — flags possiveis em
+ *      access_flags (combinaveis via OR bit a bit).
  */
 typedef struct {
     u2              access_flags;
@@ -138,6 +154,20 @@ typedef struct {
  * @brief Informacoes de um metodo da classe.
  *
  * code_attr aponta para o atributo Code parseado (NULL para nativos/abstratos).
+ *
+ * @see field_info — estrutura analoga para campos.
+ * @see Code_attribute — bytecode e dados de execucao do metodo.
+ * @see parse_code_attribute() em attributes.h — preenche code_attr.
+ *
+ * @code
+ * for (u2 i = 0; i < cf->methods_count; i++) {
+ *     method_info &m = cf->methods[i];
+ *     std::string name = resolve_utf8(cf, m.name_index);
+ *     if (name == "main" && m.code_attr) {
+ *         // m.code_attr->code contem o bytecode do metodo
+ *     }
+ * }
+ * @endcode
  */
 typedef struct {
     u2              access_flags;
@@ -153,6 +183,18 @@ typedef struct {
  *
  * Todos os arrays sao alocados com new[] e devem ser liberados
  * via free_class_file().
+ *
+ * @see field_info, method_info, attribute_info, cp_info
+ * @see read_class_file() em class_reader.h — produz um ClassFile a
+ *      partir de um arquivo .class no disco.
+ *
+ * @code
+ * ClassFile *cf = NULL;
+ * if (read_class_file("HelloWorld.class", &cf) == JVM_OK) {
+ *     std::string class_name = resolve_class_name(cf, cf->this_class);
+ *     free_class_file(cf);
+ * }
+ * @endcode
  */
 typedef struct {
     u4          magic;               /**< deve ser 0xCAFEBABE */

@@ -18,6 +18,8 @@
  *
  * @param desc  Descriptor de metodo no formato JVM, ex: "(ILjava/lang/String;D)V".
  * @return Numero total de slots que os argumentos ocupam na operand stack.
+ *
+ * @see invoke_method() — usa o resultado para transferir argumentos.
  */
 static int count_params(const std::string &desc) {
     int n = 0;
@@ -59,6 +61,8 @@ static int count_params(const std::string &desc) {
  * @param jvm          JVM em execucao; usada para acessar o heap.
  * @param frame        Frame corrente; argumentos sao retirados da operand stack.
  * @return true se o metodo foi simulado; false se nao era um println/print.
+ *
+ * @see op_invokevirtual() — unico chamador, intercepta antes do despacho normal.
  */
 static bool simulate_println(const std::string &class_name,
                              const std::string &method_name,
@@ -151,6 +155,10 @@ static bool simulate_println(const std::string &class_name,
  * @param ce        Classe dona do metodo; usada para resolver o constant pool.
  * @param has_this  true se o metodo e de instancia (inclui 'this' nos params).
  * @param desc      Descriptor do metodo; usado para calcular o numero de slots.
+ *
+ * @see op_invokestatic(), op_invokespecial(), op_invokevirtual(), op_invokeinterface()
+ *      — os 4 opcodes que chamam esta funcao auxiliar.
+ * @see count_params() — calcula o numero de slots a partir do descriptor.
  */
 static void invoke_method(JVM *jvm, Frame *caller,
                           method_info *m, ClassEntry *ce,
@@ -186,6 +194,10 @@ static void invoke_method(JVM *jvm, Frame *caller,
  *
  * @param jvm    JVM em execucao.
  * @param frame  Frame do metodo chamador.
+ *
+ * @see op_invokespecial() — usado para construtores e chamadas nao-virtuais.
+ * @see op_invokevirtual() — despacho polimorfico (com 'this').
+ * @see invoke_method()
  */
 void op_invokestatic(JVM *jvm, Frame *frame) {
     u1 *c = frame->method->code_attr->code + frame->pc;
@@ -225,6 +237,10 @@ void op_invokestatic(JVM *jvm, Frame *frame) {
  *
  * @param jvm    JVM em execucao.
  * @param frame  Frame do metodo chamador.
+ *
+ * @see op_invokestatic() — sem receptor, despacho estatico.
+ * @see op_invokevirtual() — despacho polimorfico para chamadas nao-especiais.
+ * @see invoke_method()
  */
 void op_invokespecial(JVM *jvm, Frame *frame) {
     u1 *c = frame->method->code_attr->code + frame->pc;
@@ -284,6 +300,11 @@ void op_invokespecial(JVM *jvm, Frame *frame) {
  *
  * @param jvm    JVM em execucao.
  * @param frame  Frame do metodo chamador.
+ *
+ * @see op_invokeinterface() — despacho semelhante, para metodos de interface.
+ * @see op_invokespecial() — despacho nao-virtual (construtores, private, super).
+ * @see simulate_println() — interceptacao de System.out.println/print.
+ * @see invoke_method()
  */
 void op_invokevirtual(JVM *jvm, Frame *frame) {
     u1 *c = frame->method->code_attr->code + frame->pc;
@@ -332,6 +353,9 @@ void op_invokevirtual(JVM *jvm, Frame *frame) {
  *
  * @param jvm    JVM em execucao.
  * @param frame  Frame do metodo chamador.
+ *
+ * @see op_invokevirtual() — despacho polimorfico equivalente para classes.
+ * @see invoke_method()
  */
 void op_invokeinterface(JVM *jvm, Frame *frame) {
     u1 *c = frame->method->code_attr->code + frame->pc;
