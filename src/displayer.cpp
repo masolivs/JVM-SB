@@ -9,10 +9,12 @@
 /* Helpers visuais                                                       */
 /* ------------------------------------------------------------------ */
 
+/** @brief Imprime separador de secao no stdout. */
 static void print_section(const char *title) {
     printf("\n--- %s ---\n", title);
 }
 
+/** @brief Converte access flags de classe em string legivel (public, final, etc.). */
 static void class_flags_to_str(u2 flags, char *buf, int bufsz) {
     buf[0] = '\0';
     if (flags & ACC_PUBLIC)     strncat(buf, "public ",     bufsz - (int)strlen(buf) - 1);
@@ -25,6 +27,7 @@ static void class_flags_to_str(u2 flags, char *buf, int bufsz) {
     if (buf[0] == '\0') snprintf(buf, (size_t)bufsz, "(nenhum)");
 }
 
+/** @brief Converte access flags de membro (field/method) em string legivel. */
 static void member_flags_to_str(u2 flags, char *buf, int bufsz) {
     buf[0] = '\0';
     if (flags & ACC_PUBLIC)       strncat(buf, "public ",       bufsz - (int)strlen(buf) - 1);
@@ -41,6 +44,7 @@ static void member_flags_to_str(u2 flags, char *buf, int bufsz) {
     if (buf[0] == '\0') snprintf(buf, (size_t)bufsz, "(nenhum)");
 }
 
+/** @brief Mapeia major version do .class para nome da versao Java. */
 static const char *java_version_name(u2 major) {
     switch (major) {
         case 45: return "Java 1.1";  case 46: return "Java 1.2";
@@ -56,6 +60,7 @@ static const char *java_version_name(u2 major) {
     }
 }
 
+/** @brief Retorna nome legivel da tag do constant pool. */
 static const char *cp_tag_name(u1 tag) {
     switch (tag) {
         case  1: return "Utf8";
@@ -73,13 +78,16 @@ static const char *cp_tag_name(u1 tag) {
     }
 }
 
+/** @brief Le u2 big-endian de um buffer de atributo. */
 static u2 buf_u2(const u1 *buf, u4 pos) {
     return (u2)((buf[pos] << 8) | buf[pos+1]);
 }
+/** @brief Le u4 big-endian de um buffer de atributo. */
 static u4 buf_u4(const u1 *buf, u4 pos) {
     return ((u4)buf[pos]<<24)|((u4)buf[pos+1]<<16)|((u4)buf[pos+2]<<8)|(u4)buf[pos+3];
 }
 
+/** @brief Busca indice do atributo SourceFile nos atributos da classe. */
 static u2 find_sourcefile(const ClassFile *cf) {
     for (u2 i = 0; i < cf->attributes_count; i++) {
         u2 ni = cf->attributes[i].name_index;
@@ -93,6 +101,7 @@ static u2 find_sourcefile(const ClassFile *cf) {
     return 0;
 }
 
+/** @brief Exibe LineNumberTable do metodo, se presente no atributo Code. */
 static void display_linenumber_table(const method_info &mi,
                                      const Code_attribute *ca,
                                      const cp_info *cp) {
@@ -131,6 +140,11 @@ static void display_linenumber_table(const method_info &mi,
 /* Tamanho das instrucoes                                               */
 /* ------------------------------------------------------------------ */
 
+/**
+ * @brief Retorna o tamanho em bytes da instrucao no PC dado.
+ *
+ * Trata casos especiais: wide, tableswitch, lookupswitch.
+ */
 static int opcode_size(const u1 *code, u4 pc) {
     u1 op = code[pc];
     switch (op) {
@@ -198,6 +212,16 @@ static int opcode_size(const u1 *code, u4 pc) {
 /* Disassembly                                                           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * @brief Exibe disassembly de bytecode de um metodo.
+ *
+ * @details Itera o bytecode usando opcode_size() para avancar o PC.
+ * Imprime mnemonicos via mnemonic[] e resolve operandos do constant pool.
+ * tableswitch e lookupswitch exibem estrutura completa com destinos.
+ *
+ * @see display_class_file()
+ * @see opcode_size()
+ */
 void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
     if (!code) return;
     u4 pc = 0;
@@ -304,6 +328,16 @@ void display_bytecodes(const ClassFile *cf, const Code_attribute *code) {
 /* Exibicao principal                                                   */
 /* ------------------------------------------------------------------ */
 
+/**
+ * @brief Exibe estrutura completa do ClassFile em stdout.
+ *
+ * @details Modo exibidor (CLI -d). Secoes na ordem:
+ * cabecalho, constant pool, fields, methods (com bytecodes e
+ * LineNumberTable). Usa helpers para flags, versao Java e CP.
+ *
+ * @see display_bytecodes()
+ * @see read_class_file()
+ */
 void display_class_file(const ClassFile *cf) {
     char buf[256];
 

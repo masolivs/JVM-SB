@@ -2,11 +2,20 @@
 #define OPCODES_H
 
 /**
- * @brief Enum com todos os opcodes JVM (Java 8).
+ * @file opcodes.h
+ * @brief Definicoes de opcodes JVM e tabela de mnemonicos.
  *
- * Valores correspondem diretamente ao byte do bytecode.
+ * Baseado na Java Virtual Machine Specification — Java 8.
+ */
+
+/**
+ * @enum Opcode
+ * @brief Todos os opcodes possiveis da JVM (0x00–0xFF).
+ *
+ * Cada valor corresponde ao byte do bytecode na posicao do program counter.
  */
 typedef enum {
+    /* --- Constantes e push --- */
     OP_NOP             = 0x00,
     OP_ACONST_NULL     = 0x01,
     OP_ICONST_M1       = 0x02,
@@ -28,6 +37,8 @@ typedef enum {
     OP_LDC             = 0x12,
     OP_LDC_W           = 0x13,
     OP_LDC2_W          = 0x14,
+
+    /* --- Load/Store --- */
     OP_ILOAD           = 0x15,
     OP_LLOAD           = 0x16,
     OP_FLOAD           = 0x17,
@@ -94,6 +105,8 @@ typedef enum {
     OP_BASTORE         = 0x54,
     OP_CASTORE         = 0x55,
     OP_SASTORE         = 0x56,
+
+    /* --- Stack --- */
     OP_POP             = 0x57,
     OP_POP2            = 0x58,
     OP_DUP             = 0x59,
@@ -103,6 +116,8 @@ typedef enum {
     OP_DUP2_X1         = 0x5D,
     OP_DUP2_X2         = 0x5E,
     OP_SWAP            = 0x5F,
+
+    /* --- Aritmetica --- */
     OP_IADD            = 0x60,
     OP_LADD            = 0x61,
     OP_FADD            = 0x62,
@@ -140,6 +155,8 @@ typedef enum {
     OP_IXOR            = 0x82,
     OP_LXOR            = 0x83,
     OP_IINC            = 0x84,
+
+    /* --- Conversao --- */
     OP_I2L             = 0x85,
     OP_I2F             = 0x86,
     OP_I2D             = 0x87,
@@ -155,6 +172,8 @@ typedef enum {
     OP_I2B             = 0x91,
     OP_I2C             = 0x92,
     OP_I2S             = 0x93,
+
+    /* --- Comparacao e branches --- */
     OP_LCMP            = 0x94,
     OP_FCMPL           = 0x95,
     OP_FCMPG           = 0x96,
@@ -179,21 +198,29 @@ typedef enum {
     OP_RET             = 0xA9,
     OP_TABLESWITCH     = 0xAA,
     OP_LOOKUPSWITCH    = 0xAB,
+
+    /* --- Retorno --- */
     OP_IRETURN         = 0xAC,
     OP_LRETURN         = 0xAD,
     OP_FRETURN         = 0xAE,
     OP_DRETURN         = 0xAF,
     OP_ARETURN         = 0xB0,
     OP_RETURN          = 0xB1,
+
+    /* --- Field access --- */
     OP_GETSTATIC       = 0xB2,
     OP_PUTSTATIC       = 0xB3,
     OP_GETFIELD        = 0xB4,
     OP_PUTFIELD        = 0xB5,
+
+    /* --- Invoke --- */
     OP_INVOKEVIRTUAL   = 0xB6,
     OP_INVOKESPECIAL   = 0xB7,
     OP_INVOKESTATIC    = 0xB8,
     OP_INVOKEINTERFACE = 0xB9,
     OP_INVOKEDYNAMIC   = 0xBA,
+
+    /* --- Object/Array --- */
     OP_NEW             = 0xBB,
     OP_NEWARRAY        = 0xBC,
     OP_ANEWARRAY       = 0xBD,
@@ -201,6 +228,8 @@ typedef enum {
     OP_ATHROW          = 0xBF,
     OP_CHECKCAST       = 0xC0,
     OP_INSTANCEOF      = 0xC1,
+
+    /* --- Monitor/Wide --- */
     OP_MONITORENTER    = 0xC2,
     OP_MONITOREXIT     = 0xC3,
     OP_WIDE            = 0xC4,
@@ -212,10 +241,15 @@ typedef enum {
 } Opcode;
 
 /**
- * @brief Tabela de mnemônicos para todos os 256 opcodes.
+ * @var mnemonic
+ * @brief Tabela de 256 mnemonicos JVM (um por opcode).
  *
- * Opcodes nao implementados ficam como "unknown".
- * Indexado diretamente pelo byte do opcode: mnemonic[0x60] == "iadd".
+ * Indexado diretamente pelo byte do opcode. Slots nao usados ou nao
+ * implementados retornam "unknown".
+ *
+ * @code
+ * const char *name = mnemonic[0x60]; // "iadd"
+ * @endcode
  */
 extern const char *mnemonic[256];
 
