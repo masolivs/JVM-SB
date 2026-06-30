@@ -41,7 +41,7 @@ build/%.o: src/%.cpp
 	$(CXX) $(CFLAGS) $(IFLAGS) -c $< -o $@
 
 display: all
-	./$(TARGET) -d $(CLASS)
+	./$(TARGET) -d tests/class/$(CLASS).class
 
 # Gera um .txt por arquivo .class em output/
 output: all

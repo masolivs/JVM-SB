@@ -267,3 +267,136 @@ void op_dastore(JVM *jvm, Frame *frame) {
     int32_t buf[2] = {hi, lo};
     memcpy(base, buf, 8);
 }
+
+/* ------------------------------------------------------------------ */
+/* multianewarray — array multidimensional                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @brief Mapeia o caractere de tipo base de um descriptor de array para ArrayType.
+ *
+ * @details Usado para decidir o tipo de elemento da dimensao mais interna
+ * de um array criado por multianewarray. 'L' (referencia a objeto) e
+ * qualquer caractere desconhecido caem em T_REF.
+ *
+ * @param c  Caractere do descriptor: I, J, F, D, B, C, S, Z ou L.
+ * @return ArrayType correspondente.
+ */
+static ArrayType base_type_from_char(char c) {
+    switch (c) {
+        case 'I': return T_INT;
+        case 'J': return T_LONG;
+        case 'F': return T_FLOAT;
+        case 'D': return T_DOUBLE;
+        case 'B': return T_BYTE;
+        case 'C': return T_CHAR;
+        case 'S': return T_SHORT;
+        case 'Z': return T_BOOLEAN;
+        case 'L': default: return T_REF;
+    }
+}
+
+/**
+ * @brief Constroi recursivamente um array multidimensional "retangular".
+ *
+ * @details Caso base (ndims == 1): aloca um array folha do tipo leaf_type
+ * com counts[0] elementos (heap_alloc_array). Caso recursivo: aloca um
+ * array de referencias (T_REF) com counts[0] elementos e, para cada
+ * posicao, constroi recursivamente um sub-array com counts+1/ndims-1 e
+ * guarda a referencia via array_set.
+ *
+ * Se counts[0] < 0, lanca NegativeArraySizeException e retorna 0 (a
+ * referencia parcialmente construida ate aqui fica orfa, mas o
+ * interpretador encerra a execucao normal pelo mecanismo de excecao).
+ *
+ * @param jvm        JVM em execucao (heap e tratamento de excecao).
+ * @param counts     Array com o tamanho de cada dimensao restante;
+ *                    counts[0] e a dimensao atual.
+ * @param ndims      Numero de dimensoes restantes (>= 1).
+ * @param leaf_type  Tipo de elemento da dimensao mais interna (ndims == 1).
+ * @return Referencia (indice na heap) do array construido, ou 0 em erro.
+ *
+ * @see op_multianewarray()
+ */
+static int32_t build_multiarray(JVM *jvm, const int32_t *counts, int ndims, ArrayType leaf_type) {
+    int32_t len = counts[0];
+    if (len < 0) {
+        jvm_throw(jvm, "java/lang/NegativeArraySizeException");
+        return 0;
+    }
+    if (ndims == 1) {
+        return heap_alloc_array(jvm, leaf_type, len);
+    }
+    int32_t ref = heap_alloc_array(jvm, T_REF, len);
+    JArray *arr = heap_get_array(jvm, ref);
+    for (int32_t i = 0; i < len; i++) {
+        int32_t sub = build_multiarray(jvm, counts + 1, ndims - 1, leaf_type);
+        if (jvm->exception_pending) return 0;
+        array_set(arr, i, sub);
+    }
+    return ref;
+}
+
+/**
+ * @brief multianewarray — aloca um array multidimensional e empurra sua referencia.
+ *
+ * @details Formato da instrucao: indice de 2 bytes no CP (classe do array,
+ * ex: descriptor "[[I" ou "[[Ljava/lang/String;") seguido de 1 byte com o
+ * numero de dimensoes a inicializar.
+ *
+ *   1. Le o indice CP_CLASS e o byte de dimensoes; avanca pc += 3.
+ *   2. Resolve o nome da classe via resolve_class_name() — para tipos
+ *      array, o proprio nome JA E o descriptor (ex: "[[I"), entao nao
+ *      e preciso nenhuma conversao adicional.
+ *   3. Retira da operand stack `dimensions` valores int32 (os tamanhos de
+ *      cada dimensao). A ordem de empilhamento no bytecode-fonte e
+ *      count1..countN (count1 mais profundo, countN no topo), entao o
+ *      primeiro pop devolve countN; os valores sao armazenados em counts[]
+ *      de forma que counts[0] = count1 ... counts[dimensions-1] = countN.
+ *   4. Conta os '[' iniciais do descriptor (profundidade total do tipo) e
+ *      le o caractere seguinte para descobrir o tipo base (I, J, F, D, B,
+ *      C, S, Z ou L). Se `dimensions` for menor que a profundidade total
+ *      do descriptor, a dimensao mais interna criada fica com elementos
+ *      T_REF (sub-arrays nao inicializados, i.e. null) — mesmo
+ *      comportamento da JVM real para multianewarray parcial.
+ *   5. Constroi a estrutura recursivamente via build_multiarray() e
+ *      empurra a referencia resultante na operand stack.
+ *
+ * @param jvm    JVM em execucao.
+ * @param frame  Frame corrente.
+ *
+ * @warning Nao verifica se `dimensions` excede o numero de '[' do
+ * descriptor (bytecode malformado nesse caso e comportamento indefinido,
+ * assim como em outros pontos deste interpretador que confiam no
+ * verificador da JVM real, que aqui nao existe).
+ *
+ * @see build_multiarray()
+ * @see op_anewarray(), op_newarray() — equivalentes de 1 dimensao.
+ */
+void op_multianewarray(JVM *jvm, Frame *frame) {
+    u1 *c = frame->method->code_attr->code + frame->pc;
+    u2 idx = (u2)((c[0] << 8) | c[1]);
+    u1 dimensions = c[2];
+    frame->pc += 3;
+
+    const ClassFile *cf = frame->klass->cf;
+    std::string descriptor = resolve_class_name(cf, idx);
+
+    /* Retira os tamanhos da pilha: topo = countN, fundo = count1 */
+    int32_t *counts = new int32_t[dimensions];
+    for (int i = dimensions - 1; i >= 0; i--) {
+        counts[i] = frame_pop(frame);
+    }
+
+    /* Conta a profundidade total do tipo e descobre o tipo base */
+    size_t depth = 0;
+    while (depth < descriptor.size() && descriptor[depth] == '[') depth++;
+    char base_char = (depth < descriptor.size()) ? descriptor[depth] : 'L';
+    ArrayType leaf_type = ((size_t)dimensions < depth) ? T_REF : base_type_from_char(base_char);
+
+    int32_t ref = build_multiarray(jvm, counts, dimensions, leaf_type);
+    delete[] counts;
+
+    if (jvm->exception_pending) return;
+    frame_push(frame, ref);
+}

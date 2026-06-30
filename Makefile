@@ -36,7 +36,7 @@ $(TARGET): $(SRCS)
 	$(CXX) $(CFLAGS) $(IFLAGS) $(SRCS) -o $(TARGET)
 
 display: all # modo leitor
-	./$(TARGET) -d $(CLASS)
+	./$(TARGET) -d tests/class/$(CLASS).class
 
 output: all
 	mkdir -p $(OUTDIR)

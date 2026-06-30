@@ -50,6 +50,90 @@ void op_goto  (JVM *jvm, Frame *frame) { (void)jvm; u1*c=frame->method->code_att
 void op_goto_w(JVM *jvm, Frame *frame) { (void)jvm; u1*c=frame->method->code_attr->code+frame->pc; int32_t off=(int32_t)(((uint32_t)c[0]<<24)|((uint32_t)c[1]<<16)|((uint32_t)c[2]<<8)|c[3]); frame->pc=(uint32_t)((int32_t)frame->pc-1+off); }
 
 /* ------------------------------------------------------------------ */
+/* jsr / ret — subrotinas de bytecode                                   */
+/*                                                                      */
+/* Usadas por compiladores antigos para implementar blocos `finally`   */
+/* sem duplicar codigo (tecnica abandonada por javac moderno, que      */
+/* prefere duplicar o bytecode do finally em cada saida do try).       */
+/* jsr empilha o "returnAddress" (PC da instrucao seguinte) e desvia;  */
+/* ret le esse endereco de uma variavel local e retorna para la.       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @brief jsr — desvia para uma subrotina, empilhando o endereco de retorno.
+ *
+ * @details Le um int16_t com sinal a partir do PC (mesmo formato de offset
+ * de goto) e calcula o destino como (pc_do_opcode + offset), onde
+ * pc_do_opcode = frame->pc - 1. Antes de desviar, empurra na operand stack
+ * o "returnAddress": o PC da instrucao imediatamente apos os 2 bytes de
+ * operando de jsr (frame->pc + 2). O bytecode gerado pelo compilador
+ * tipicamente faz um astore logo no inicio da subrotina para guardar esse
+ * valor numa variavel local, que e lida depois por ret.
+ *
+ * @param jvm    Nao utilizado.
+ * @param frame  Frame corrente; pc e atualizado para o destino da subrotina.
+ *
+ * @see op_ret() — retorna usando o endereco empilhado aqui.
+ * @see op_jsr_w() — variante com offset de 4 bytes.
+ * @see op_goto() — mesma logica de offset, sem o push do endereco de retorno.
+ */
+void op_jsr(JVM *jvm, Frame *frame) {
+    (void)jvm;
+    u1 *c = frame->method->code_attr->code + frame->pc;
+    int16_t off = (int16_t)((c[0] << 8) | c[1]);
+    int32_t return_pc = (int32_t)frame->pc + 2; /* instrucao apos os 2 bytes de operando */
+    frame_push(frame, return_pc);
+    frame->pc = (uint32_t)((int32_t)frame->pc - 1 + off);
+}
+
+/**
+ * @brief jsr_w — identico a jsr, mas com offset de 4 bytes com sinal.
+ *
+ * @details Permite desviar para subrotinas em metodos grandes (> 32 KB),
+ * assim como goto_w faz para goto. O returnAddress empilhado e o PC
+ * imediatamente apos os 4 bytes de operando (frame->pc + 4).
+ *
+ * @param jvm    Nao utilizado.
+ * @param frame  Frame corrente; pc e atualizado para o destino da subrotina.
+ *
+ * @see op_jsr()
+ */
+void op_jsr_w(JVM *jvm, Frame *frame) {
+    (void)jvm;
+    u1 *c = frame->method->code_attr->code + frame->pc;
+    int32_t off = (int32_t)(((uint32_t)c[0] << 24) | ((uint32_t)c[1] << 16) |
+                             ((uint32_t)c[2] << 8) | c[3]);
+    int32_t return_pc = (int32_t)frame->pc + 4; /* instrucao apos os 4 bytes de operando */
+    frame_push(frame, return_pc);
+    frame->pc = (uint32_t)((int32_t)frame->pc - 1 + off);
+}
+
+/**
+ * @brief ret — retorna de uma subrotina para o endereco guardado numa variavel local.
+ *
+ * @details Le um indice de 1 byte e busca em local_vars[index] o
+ * returnAddress que foi empilhado por jsr/jsr_w e armazenado ali por um
+ * astore anterior (gerado pelo compilador no inicio da subrotina). Define
+ * frame->pc diretamente como esse valor — diferente de goto, o destino nao
+ * e relativo ao PC atual, e sim um endereco absoluto ja calculado por jsr.
+ *
+ * @param jvm    Nao utilizado.
+ * @param frame  Frame corrente; pc e definido para o valor da variavel local.
+ *
+ * @warning Nao ha verificacao de que local_vars[index] de fato contem um
+ * returnAddress valido (a JVM real faz checagem de tipo via verifier;
+ * este interpretador confia no bytecode de entrada).
+ *
+ * @see op_jsr(), op_jsr_w() — empilham o valor que ret consome.
+ */
+void op_ret(JVM *jvm, Frame *frame) {
+    (void)jvm;
+    u1 index = frame->method->code_attr->code[frame->pc++];
+    int32_t target = frame_get_local(frame, index);
+    frame->pc = (uint32_t)target;
+}
+
+/* ------------------------------------------------------------------ */
 /* Desvios condicionais — comparacao com zero                           */
 /* Todas usam a macro BRANCH2; a diferenca e apenas a condicao testada. */
 /* ------------------------------------------------------------------ */

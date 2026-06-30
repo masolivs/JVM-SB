@@ -74,6 +74,7 @@ void op_dstore_3(JVM*, Frame*);
 void op_astore(JVM*, Frame*);    void op_astore_0(JVM*, Frame*);
 void op_astore_1(JVM*, Frame*);  void op_astore_2(JVM*, Frame*);
 void op_astore_3(JVM*, Frame*);
+void op_wide(JVM*, Frame*);
 
 /* stack_ops.cpp */
 void op_pop(JVM*, Frame*);    void op_pop2(JVM*, Frame*);
@@ -84,6 +85,8 @@ void op_swap(JVM*, Frame*);
 
 /* control.cpp */
 void op_goto(JVM*, Frame*);      void op_goto_w(JVM*, Frame*);
+void op_jsr(JVM*, Frame*);       void op_jsr_w(JVM*, Frame*);
+void op_ret(JVM*, Frame*);
 void op_ifeq(JVM*, Frame*);      void op_ifne(JVM*, Frame*);
 void op_iflt(JVM*, Frame*);      void op_ifge(JVM*, Frame*);
 void op_ifgt(JVM*, Frame*);      void op_ifle(JVM*, Frame*);
@@ -121,6 +124,7 @@ void op_iastore(JVM*, Frame*); void op_lastore(JVM*, Frame*);
 void op_fastore(JVM*, Frame*); void op_dastore(JVM*, Frame*);
 void op_aastore(JVM*, Frame*); void op_bastore(JVM*, Frame*);
 void op_castore(JVM*, Frame*); void op_sastore(JVM*, Frame*);
+void op_multianewarray(JVM*, Frame*);
 
 /* convert.cpp */
 void op_i2l(JVM*, Frame*); void op_i2f(JVM*, Frame*); void op_i2d(JVM*, Frame*);
@@ -352,6 +356,8 @@ void init_dispatch_table(JVM *jvm) {
     jvm->dispatch[0xA5] = op_if_acmpeq;
     jvm->dispatch[0xA6] = op_if_acmpne;
     jvm->dispatch[0xA7] = op_goto;
+    jvm->dispatch[0xA8] = op_jsr;
+    jvm->dispatch[0xA9] = op_ret;
     jvm->dispatch[0xAA] = op_tableswitch;
     jvm->dispatch[0xAB] = op_lookupswitch;
     jvm->dispatch[0xAC] = op_ireturn;
@@ -377,9 +383,12 @@ void init_dispatch_table(JVM *jvm) {
     jvm->dispatch[0xC1] = op_instanceof;
     jvm->dispatch[0xC2] = op_monitorenter;
     jvm->dispatch[0xC3] = op_monitorexit;
+    jvm->dispatch[0xC4] = op_wide;
+    jvm->dispatch[0xC5] = op_multianewarray;
     jvm->dispatch[0xC6] = op_ifnull;
     jvm->dispatch[0xC7] = op_ifnonnull;
     jvm->dispatch[0xC8] = op_goto_w;
+    jvm->dispatch[0xC9] = op_jsr_w;
 }
 
 /* ------------------------------------------------------------------ */

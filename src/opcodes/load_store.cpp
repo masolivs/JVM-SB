@@ -3,6 +3,7 @@
 #include "constant_pool.h"
 #include <cstring>
 #include <cstdint>
+#include <cstdio>
 
 /* ------------------------------------------------------------------ */
 /* Constantes — empurham valores literais sem ler operandos             */
@@ -311,3 +312,85 @@ void op_astore_1(JVM *jvm, Frame *frame) { (void)jvm; frame_set_local(frame,1,fr
 void op_astore_2(JVM *jvm, Frame *frame) { (void)jvm; frame_set_local(frame,2,frame_pop(frame)); }
 /** @brief astore_3 — armazena referencia em local_vars[3]. */
 void op_astore_3(JVM *jvm, Frame *frame) { (void)jvm; frame_set_local(frame,3,frame_pop(frame)); }
+
+/* ------------------------------------------------------------------ */
+/* wide — prefixo que estende indices de variavel local para 2 bytes    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @brief wide — prefixo que estende o indice de variavel local para 2 bytes.
+ *
+ * @details O formato da instrucao depende do opcode que segue o prefixo:
+ *   - Forma geral: `wide <opcode> <indexbyte1> <indexbyte2>` (3 bytes de
+ *     operando), usada com iload, fload, aload, lload, dload, istore,
+ *     fstore, astore, lstore, dstore e ret — todos opcodes cujo indice de
+ *     variavel local normalmente cabe em 1 byte (0-255), mas que com o
+ *     prefixo wide passam a aceitar indices de 0-65535 (metodos com mais
+ *     de 256 variaveis locais).
+ *   - Forma especial: `wide iinc <indexbyte1> <indexbyte2> <constbyte1>
+ *     <constbyte2>` (5 bytes de operando) — alem do indice de 2 bytes, a
+ *     constante de incremento tambem passa de 1 para 2 bytes com sinal.
+ *
+ * Esta funcao nao reaproveita os handlers op_iload/op_istore/etc. (que
+ * sao fixos em ler 1 byte de indice); em vez disso, replica diretamente
+ * a leitura/escrita de variavel local correta para cada sub-opcode,
+ * usando os mesmos helpers (frame_get_local, frame_get_local_long,
+ * frame_push, frame_push_long, ...) que esses handlers usam.
+ *
+ * @param jvm    Nao utilizado.
+ * @param frame  Frame corrente; pc e local_vars sao atualizados conforme
+ *               o sub-opcode.
+ *
+ * @warning Se o sub-opcode apos wide nao for um dos listados acima, um
+ * erro e impresso em stderr e a instrucao e tratada como no-op (pc ja
+ * avancado pelos 3 bytes de indice). Bytecode gerado por um compilador
+ * correto nunca produz essa situacao.
+ *
+ * @see op_iload(), op_istore(), op_lload(), op_lstore(), op_dload(),
+ *      op_dstore(), op_fload(), op_fstore(), op_aload(), op_astore()
+ *      — formas de 1 byte de indice que wide estende para 2 bytes.
+ * @see op_ret() em control.cpp — forma de 1 byte estendida por wide ret.
+ * @see op_iinc() em arithmetic.cpp — forma de 1 byte estendida por wide iinc.
+ */
+void op_wide(JVM *jvm, Frame *frame) {
+    (void)jvm;
+    u1 *code = frame->method->code_attr->code;
+    u1 sub_op = code[frame->pc];
+    u2 index = (u2)((code[frame->pc + 1] << 8) | code[frame->pc + 2]);
+
+    if (sub_op == 0x84) { /* wide iinc: indice de 2 bytes + constante de 2 bytes */
+        int16_t cst = (int16_t)((code[frame->pc + 3] << 8) | code[frame->pc + 4]);
+        frame_set_local(frame, index, frame_get_local(frame, index) + cst);
+        frame->pc += 5;
+        return;
+    }
+
+    frame->pc += 3; /* consome sub_op (ja lido) + indice de 2 bytes */
+
+    switch (sub_op) {
+        case 0x15: /* iload */
+        case 0x17: /* fload */
+        case 0x19: /* aload */
+            frame_push(frame, frame_get_local(frame, index));
+            break;
+        case 0x16: /* lload */
+        case 0x18: /* dload */
+            frame_push_long(frame, frame_get_local_long(frame, index));
+            break;
+        case 0x36: /* istore */
+        case 0x38: /* fstore */
+        case 0x3A: /* astore */
+            frame_set_local(frame, index, frame_pop(frame));
+            break;
+        case 0x37: /* lstore */
+        case 0x39: /* dstore */
+            frame_set_local_long(frame, index, frame_pop_long(frame));
+            break;
+        case 0xA9: /* ret */
+            frame->pc = (uint32_t)frame_get_local(frame, index);
+            break;
+        default:
+            fprintf(stderr, "wide: sub-opcode invalido 0x%02X\n", sub_op);
+            break;
+    }
+}
